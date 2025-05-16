@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
-// Firebase Config
+// Config Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -21,7 +21,7 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 let currentViewBeforePublic = "explore";
 
-// Referencias UI
+// UI refs
 const navButtons = {
   myProfile: document.getElementById("nav-my-profile"),
   explore: document.getElementById("nav-explore")
@@ -39,7 +39,6 @@ document.getElementById("close-public-profile").addEventListener("click", () => 
   switchView(currentViewBeforePublic || "explore");
 });
 
-// Estado de sesión
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   document.getElementById("login-button").style.display = user ? "none" : "inline-block";
@@ -57,7 +56,6 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Navegación
 function switchView(view) {
   Object.values(views).forEach(v => v && (v.style.display = "none"));
   Object.values(navButtons).forEach(b => b.classList.remove("active"));
@@ -77,7 +75,6 @@ function switchView(view) {
 navButtons.myProfile.addEventListener("click", () => switchView("myProfile"));
 navButtons.explore.addEventListener("click", () => switchView("explore"));
 
-// Cargar mi perfil
 async function loadMyProfile() {
   const container = document.getElementById("profile-display-content");
   const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
@@ -90,18 +87,35 @@ async function loadMyProfile() {
   let nameHTML = data.name;
   if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
 
-  let interestsHTML = "";
-  if (data.interests) {
-    interestsHTML = "<h3>Mis gustos</h3><ul>";
-    for (const [cat, info] of Object.entries(data.interests)) {
-      interestsHTML += `
-        <li>
-          <strong>${cat}:</strong> ${info.name}
-          ${info.reason ? `<br><em>Por qué: ${info.reason}</em>` : ""}
-          ${info.image ? `<br><img src="${info.image}" style="max-width:150px; border-radius:8px;">` : ""}
-        </li>`;
+  const categories = data.interests ? Object.keys(data.interests) : [];
+  const allBtn = `<button class="filter-btn active" data-cat="all">Todo</button>`;
+  const catBtns = categories.map(cat => `<button class="filter-btn" data-cat="${cat}">${cat}</button>`).join("");
+
+  function renderInterests(filterCat) {
+    if (!data.interests) return "<p>No tienes gustos registrados.</p>";
+    let html = "<ul>";
+    if (filterCat === "all") {
+      for (const cat of categories) {
+        for (const item of data.interests[cat]) {
+          html += renderInterestItem(cat, item);
+        }
+      }
+    } else {
+      for (const item of data.interests[filterCat] || []) {
+        html += renderInterestItem(filterCat, item);
+      }
     }
-    interestsHTML += "</ul>";
+    html += "</ul>";
+    return html;
+  }
+
+  function renderInterestItem(cat, item) {
+    return `
+      <li>
+        <strong>${cat}:</strong> ${item.name}
+        ${item.reason ? `<br><em>Por qué: ${item.reason}</em>` : ""}
+        ${item.image ? `<br><img src="${item.image}" style="max-width:150px; border-radius:8px;">` : ""}
+      </li>`;
   }
 
   container.innerHTML = `
@@ -110,14 +124,25 @@ async function loadMyProfile() {
       <h2>${nameHTML}</h2>
     </div>
     <p>${data.description || ""}</p>
-    ${interestsHTML}
+    <div id="filters-container">${allBtn}${catBtns}</div>
+    <div id="interests-list">${renderInterests("all")}</div>
     <button id="add-interest-btn">➕ Añadir otro gusto</button>
   `;
+
+  const filtersContainer = document.getElementById("filters-container");
+  const interestsList = document.getElementById("interests-list");
+  filtersContainer.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      filtersContainer.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const cat = btn.getAttribute("data-cat");
+      interestsList.innerHTML = renderInterests(cat);
+    });
+  });
 
   document.getElementById("add-interest-btn").addEventListener("click", showInterestForm);
 }
 
-// Formulario para añadir gusto
 async function showInterestForm() {
   const container = document.getElementById("profile-display-content");
   if (document.getElementById("new-interest-form")) return;
@@ -172,13 +197,13 @@ async function showInterestForm() {
       return;
     }
 
-    const updatedInterests = {
-      ...existingData.interests,
-      [selectedCategory]: { name, reason, image }
-    };
+    const interests = existingData.interests || {};
+
+    if (!interests[selectedCategory]) interests[selectedCategory] = [];
+    interests[selectedCategory].push({ name, reason, image });
 
     await setDoc(doc(db, "profiles", currentUser.uid), {
-      interests: updatedInterests
+      interests
     }, { merge: true });
 
     alert("🎉 Gusto añadido correctamente");
@@ -186,7 +211,6 @@ async function showInterestForm() {
   });
 }
 
-// Explorar perfiles
 async function loadUserList() {
   const container = document.getElementById("user-list-container");
   container.innerHTML = "";
@@ -206,7 +230,6 @@ async function loadUserList() {
   });
 }
 
-// Mostrar perfil público
 async function showPublicProfile(userId) {
   const container = document.getElementById("public-profile-content");
   const profileSnap = await getDoc(doc(db, "profiles", userId));
@@ -222,13 +245,15 @@ async function showPublicProfile(userId) {
   let interestsHTML = "";
   if (data.interests) {
     interestsHTML = "<h3>Gustos</h3><ul>";
-    for (const [cat, info] of Object.entries(data.interests)) {
-      interestsHTML += `
-        <li>
-          <strong>${cat}:</strong> ${info.name}
-          ${info.reason ? `<br><em>Por qué: ${info.reason}</em>` : ""}
-          ${info.image ? `<br><img src="${info.image}" style="max-width:150px; border-radius:8px;">` : ""}
-        </li>`;
+    for (const [cat, items] of Object.entries(data.interests)) {
+      for (const item of items) {
+        interestsHTML += `
+          <li>
+            <strong>${cat}:</strong> ${item.name}
+            ${item.reason ? `<br><em>Por qué: ${item.reason}</em>` : ""}
+            ${item.image ? `<br><img src="${item.image}" style="max-width:150px; border-radius:8px;">` : ""}
+          </li>`;
+      }
     }
     interestsHTML += "</ul>";
   }
