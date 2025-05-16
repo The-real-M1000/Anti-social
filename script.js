@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
-// Firebase config
+// Configuración Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -13,7 +13,7 @@ const firebaseConfig = {
   measurementId: "G-BRWL7419ZQ"
 };
 
-// Initialize Firebase
+// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -21,6 +21,7 @@ const provider = new GoogleAuthProvider();
 
 let currentUser = null;
 
+// Referencias a botones y vistas
 const navButtons = {
   myProfile: document.getElementById("nav-my-profile"),
   editProfile: document.getElementById("nav-edit-profile"),
@@ -45,7 +46,7 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById("login-button").style.display = "none";
     document.getElementById("logout-button").style.display = "inline-block";
     const profileSnap = await getDoc(doc(db, "profiles", user.uid));
-    if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) return; // onboarding.js mostrará el cuestionario
+    if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) return; // onboarding.js maneja el cuestionario
     switchView("myProfile");
   } else {
     document.getElementById("login-button").style.display = "inline-block";
@@ -68,18 +69,25 @@ navButtons.myProfile.addEventListener("click", () => switchView("myProfile"));
 navButtons.editProfile.addEventListener("click", () => switchView("editProfile"));
 navButtons.explore.addEventListener("click", () => switchView("explore"));
 
-// Carga perfil
+// Cargar perfil
 async function loadMyProfile() {
   const container = document.getElementById("profile-display-content");
   const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
   if (profileSnap.exists()) {
     const data = profileSnap.data();
+
+    // Nombre con link si existe
+    let nameHTML = data.name;
+    if (data.photoLink) {
+      nameHTML = `<a href="${data.photoLink}" target="_blank" rel="noopener noreferrer">${data.name}</a>`;
+    }
+
     container.innerHTML = `
       <div class="profile-header">
-        <img src="${data.image}" alt="Foto de perfil" />
-        <h2>${data.name}</h2>
+        <img src="${data.image || 'default-profile.png'}" alt="Foto de perfil" />
+        <h2>${nameHTML}</h2>
       </div>
-      <p>${data.description}</p>
+      <p>${data.description || ''}</p>
     `;
   } else {
     container.innerHTML = `<p class="placeholder-text">Aún no has creado tu perfil.</p>`;
@@ -96,7 +104,7 @@ async function loadUserList() {
       const data = docSnap.data();
       container.innerHTML += `
         <div class="user-card">
-          <img src="${data.image}" alt="${data.name}" />
+          <img src="${data.image || 'default-profile.png'}" alt="${data.name}" />
           <span>${data.name}</span>
         </div>
       `;
@@ -110,18 +118,22 @@ async function renderEditForm() {
   const profileRef = doc(db, "profiles", currentUser.uid);
   const profileSnap = await getDoc(profileRef);
   const data = profileSnap.exists() ? profileSnap.data() : {};
+
   container.innerHTML = `
     <fieldset>
       <legend>Tu perfil público</legend>
 
       <label for="edit-name">Nombre:</label>
-      <input type="text" id="edit-name" value="${data.name || ""}" required />
+      <input type="text" id="edit-name" value="${data.name || ''}" required />
+
+      <label for="edit-image-url">URL de imagen de perfil:</label>
+      <input type="url" id="edit-image-url" value="${data.image || ''}" placeholder="https://ejemplo.com/tu-foto.jpg" />
+
+      <label for="edit-link">Link (enlace) asociado al nombre (opcional):</label>
+      <input type="url" id="edit-link" value="${data.photoLink || ''}" placeholder="https://tusitio.com" />
 
       <label for="edit-description">Descripción:</label>
-      <textarea id="edit-description" rows="3" required>${data.description || ""}</textarea>
-
-      <label for="edit-image">URL de imagen de perfil:</label>
-      <input type="url" id="edit-image" value="${data.image || ""}" />
+      <textarea id="edit-description" rows="3">${data.description || ''}</textarea>
     </fieldset>
   `;
 }
@@ -129,17 +141,23 @@ async function renderEditForm() {
 // Guardar perfil
 document.getElementById("save-profile-button").addEventListener("click", async () => {
   const name = document.getElementById("edit-name").value.trim();
+  const image = document.getElementById("edit-image-url").value.trim();
+  const photoLink = document.getElementById("edit-link").value.trim();
   const description = document.getElementById("edit-description").value.trim();
-  const image = document.getElementById("edit-image").value.trim();
 
-  if (!name || !description) {
-    alert("Por favor completa todos los campos obligatorios.");
+  if (!name) {
+    alert("El nombre es obligatorio.");
     return;
   }
 
   await setDoc(
     doc(db, "profiles", currentUser.uid),
-    { name, description, image },
+    {
+      name,
+      image: image || null,
+      photoLink: photoLink || null,
+      description: description || null,
+    },
     { merge: true }
   );
 
