@@ -14,7 +14,6 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     const profileRef = doc(db, "profiles", user.uid);
     const profileSnap = await getDoc(profileRef);
-
     if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) {
       showOnboarding(user.uid);
     }
@@ -104,6 +103,5 @@ async function saveOnboardingData(uid) {
     <p class="placeholder-text">¡Gracias! Tu perfil ha sido configurado.</p>
   `;
 
-  // Si quieres redirigir directo al perfil:
-  // setTimeout(() => location.reload(), 1500);
+  setTimeout(() => location.reload(), 1000);
 }
