@@ -118,7 +118,7 @@ async function loadMyProfile() {
 
   container.innerHTML = `
     <div class="profile-header">
-      <img src="${data.image || "default-profile.png"}" />
+      <img src="${data.image || 'https://placehold.co/150x150?text=👤'}" alt="Foto de perfil" />
       <h2>${nameHTML}</h2>
     </div>
     <p>${data.description || ""}</p>
@@ -196,13 +196,13 @@ async function showInterestForm() {
     }
 
     let interests = existingData.interests || {};
-
     let catArray = interests[selectedCategory];
     if (!catArray) {
       catArray = [];
     } else if (!Array.isArray(catArray)) {
       catArray = [catArray];
     }
+
     catArray.push({ name, reason, image });
     interests[selectedCategory] = catArray;
 
@@ -226,7 +226,7 @@ async function loadUserList() {
     const card = document.createElement("div");
     card.className = "user-card";
     card.innerHTML = `
-      <img src="${data.image || "default-profile.png"}" />
+      <img src="${data.image || 'https://placehold.co/150x150?text=👤'}" />
       <span>${data.name}</span>
     `;
     card.onclick = () => showPublicProfile(uid);
@@ -263,7 +263,7 @@ async function showPublicProfile(userId) {
 
   container.innerHTML = `
     <div class="profile-header">
-      <img src="${data.image || "default-profile.png"}" />
+      <img src="${data.image || 'https://placehold.co/150x150?text=👤'}" />
       <h2>${nameHTML}</h2>
     </div>
     <p>${data.description || ""}</p>
