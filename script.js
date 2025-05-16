@@ -21,7 +21,6 @@ const provider = new GoogleAuthProvider();
 
 let currentUser = null;
 
-// Referencias a botones y vistas
 const navButtons = {
   myProfile: document.getElementById("nav-my-profile"),
   explore: document.getElementById("nav-explore")
@@ -38,7 +37,6 @@ document.getElementById("logout-button").addEventListener("click", () => {
   signOut(auth);
 });
 
-// Observador de auth
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if (user) {
@@ -47,7 +45,6 @@ onAuthStateChanged(auth, async (user) => {
 
     const profileSnap = await getDoc(doc(db, "profiles", user.uid));
     if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) {
-      // onboarding.js mostrará el cuestionario, aquí no hacemos nada más
       document.getElementById("app-container").innerHTML = `<p class="placeholder-text">Completa tu perfil para continuar.</p>`;
       return;
     }
@@ -60,9 +57,8 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Cambiar vistas
 function switchView(view) {
-  Object.values(views).forEach(v => v.style.display = "none");
+  Object.values(views).forEach(v => (v.style.display = "none"));
   Object.values(navButtons).forEach(b => b.classList.remove("active"));
   views[view].style.display = "block";
   navButtons[view].classList.add("active");
@@ -73,17 +69,30 @@ function switchView(view) {
 navButtons.myProfile.addEventListener("click", () => switchView("myProfile"));
 navButtons.explore.addEventListener("click", () => switchView("explore"));
 
-// Cargar perfil actual
 async function loadMyProfile() {
   const container = document.getElementById("profile-display-content");
   const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
   if (profileSnap.exists()) {
     const data = profileSnap.data();
 
-    // Nombre con link opcional
     let nameHTML = data.name;
     if (data.photoLink) {
       nameHTML = `<a href="${data.photoLink}" target="_blank" rel="noopener noreferrer">${data.name}</a>`;
+    }
+
+    // Construir HTML para intereses
+    let interestsHTML = "";
+    if (data.interests) {
+      interestsHTML = "<h3>Mis gustos</h3><ul>";
+      for (const [category, info] of Object.entries(data.interests)) {
+        interestsHTML += `
+          <li>
+            <strong>${category}:</strong> ${info.name}
+            ${info.reason ? `<br><em>Por qué: ${info.reason}</em>` : ""}
+            ${info.image ? `<br><img src="${info.image}" alt="${info.name}" style="max-width:150px; border-radius:8px; margin-top:0.3em;">` : ""}
+          </li>`;
+      }
+      interestsHTML += "</ul>";
     }
 
     container.innerHTML = `
@@ -92,13 +101,13 @@ async function loadMyProfile() {
         <h2>${nameHTML}</h2>
       </div>
       <p>${data.description || ''}</p>
+      ${interestsHTML}
     `;
   } else {
     container.innerHTML = `<p class="placeholder-text">Aún no has creado tu perfil.</p>`;
   }
 }
 
-// Cargar lista de otros usuarios
 async function loadUserList() {
   const container = document.getElementById("user-list-container");
   container.innerHTML = "";
