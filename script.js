@@ -17,6 +17,10 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+function generateId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
 let currentUser = null;
 let currentViewBeforePublic = "explore";
 
@@ -179,7 +183,6 @@ async function loadMyProfile() {
   const filtersContainer = document.getElementById("filters-container");
   const interestsList = document.getElementById("interests-list");
 
-  // Carga inicial todo
   interestsList.innerHTML = await renderInterests("all");
 
   filtersContainer.querySelectorAll(".filter-btn").forEach(btn => {
@@ -213,8 +216,7 @@ async function showInterestForm() {
         ${allCategories.map(cat => `<option value="${cat}">${cat}</option>`).join("")}
         <option value="otra">Otra...</option>
       </select>
-      <div id="custom-category-field" style="display:none; margin-top:0.5em;">
-        <input type="text" id="custom-category" placeholder="Escribe tu categoría" />
+      <div id="custom-category-field" style="display:none; margin-top:0.5em;">      <input type="text" id="custom-category" placeholder="Escribe tu categoría" />
       </div>
       <label>Nombre:</label>
       <input type="text" id="new-name"><br>
@@ -259,68 +261,68 @@ async function showInterestForm() {
     catArray.push({ name, reason, image });
     interests[selectedCategory] = catArray;
 
-   
+    await setDoc(doc(db, "profiles", currentUser.uid), {
+      interests
+    }, { merge: true });
 
-ChatGPT dijo:
-
-await setDoc(doc(db, "profiles", currentUser.uid), {
-interests
-}, { merge: true });
-
-alert("🎉 Gusto añadido correctamente");
-loadMyProfile();
-
-});
+    alert("🎉 Gusto añadido correctamente");
+    loadMyProfile();
+  });
 }
 
 async function loadUserList() {
-const container = document.getElementById("user-list-container");
-container.innerHTML = "";
-const querySnapshot = await getDocs(collection(db, "profiles"));
-querySnapshot.forEach((docSnap) => {
-const data = docSnap.data();
-const uid = docSnap.id;
+  const container = document.getElementById("user-list-container");
+  container.innerHTML = "";
+  const querySnapshot = await getDocs(collection(db, "profiles"));
+  querySnapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    const uid = docSnap.id;
 
-const card = document.createElement("div");
-card.className = "user-card";
-card.innerHTML = `
-  <img src="${data.image || 'https://placehold.co/150x150?text=👤'}" />
-  <span>${data.name}</span>
-`;
-card.onclick = () => showPublicProfile(uid);
-container.appendChild(card);
-
-});
+    const card = document.createElement("div");
+    card.className = "user-card";
+    card.innerHTML = `
+      <img src="${data.image || 'https://placehold.co/150x150?text=👤'}" />
+      <span>${data.name}</span>
+    `;
+    card.onclick = () => showPublicProfile(uid);
+    container.appendChild(card);
+  });
 }
 
 async function showPublicProfile(userId) {
-const container = document.getElementById("public-profile-content");
-const profileSnap = await getDoc(doc(db, "profiles", userId));
-if (!profileSnap.exists()) {
-container.innerHTML = "<p>Perfil no encontrado.</p>";
-return;
-}
+  const container = document.getElementById("public-profile-content");
+  const profileSnap = await getDoc(doc(db, "profiles", userId));
+  if (!profileSnap.exists()) {
+    container.innerHTML = "<p>Perfil no encontrado.</p>";
+    return;
+  }
 
-const data = profileSnap.data();
-let nameHTML = data.name;
-if (data.photoLink) nameHTML = <a href="${data.photoLink}" target="_blank">${data.name}</a>;
+  const data = profileSnap.data();
+  let nameHTML = data.name;
+  if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
 
-let interestsHTML = "<ul>";
-if (data.interests) {
-for (const [cat, items] of Object.entries(data.interests)) {
-let arr = items;
-if (arr && !Array.isArray(arr)) arr = [arr];
-interestsHTML += <li><strong>${cat}:</strong><ul>;
-for (const item of arr) {
-interestsHTML += <li>${item.name}</li>;
-}
-interestsHTML += "</ul></li>";
-}
-}
-interestsHTML += "</ul>";
+  let interestsHTML = "<ul>";
+  if (data.interests) {
+    for (const [cat, items] of Object.entries(data.interests)) {
+      let arr = items;
+      if (arr && !Array.isArray(arr)) arr = [arr];
+      interestsHTML += `<li><strong>${cat}:</strong><ul>`;
+      for (const item of arr) {
+        interestsHTML += `<li>${item.name}</li>`;
+      }
+      interestsHTML += "</ul></li>";
+    }
+  }
+  interestsHTML += "</ul>";
 
-container.innerHTML = <div class="profile-header"> <img src="${data.image || 'https://placehold.co/150x150?text=👤'}" /> <h2>${nameHTML}</h2> </div> <p>${data.description || ""}</p> ${interestsHTML} ;
+  container.innerHTML = `
+    <div class="profile-header">
+      <img src="${data.image || 'https://placehold.co/150x150?text=👤'}" />
+      <h2>${nameHTML}</h2>
+    </div>
+    <p>${data.description || ""}</p>
+    ${interestsHTML}
+  `;
 
-switchView("publicProfile");
+  switchView("publicProfile");
 }
-
