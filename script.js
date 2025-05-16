@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
-// Configuración Firebase
+// Config Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -13,7 +13,7 @@ const firebaseConfig = {
   measurementId: "G-BRWL7419ZQ"
 };
 
-// Inicializar Firebase
+// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -24,12 +24,10 @@ let currentUser = null;
 // Referencias a botones y vistas
 const navButtons = {
   myProfile: document.getElementById("nav-my-profile"),
-  editProfile: document.getElementById("nav-edit-profile"),
   explore: document.getElementById("nav-explore")
 };
 const views = {
   myProfile: document.getElementById("my-profile-view"),
-  editProfile: document.getElementById("edit-profile-view"),
   explore: document.getElementById("explore-view")
 };
 
@@ -40,13 +38,20 @@ document.getElementById("logout-button").addEventListener("click", () => {
   signOut(auth);
 });
 
+// Observador de auth
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if (user) {
     document.getElementById("login-button").style.display = "none";
     document.getElementById("logout-button").style.display = "inline-block";
+
     const profileSnap = await getDoc(doc(db, "profiles", user.uid));
-    if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) return; // onboarding.js maneja el cuestionario
+    if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) {
+      // onboarding.js mostrará el cuestionario, aquí no hacemos nada más
+      document.getElementById("app-container").innerHTML = `<p class="placeholder-text">Completa tu perfil para continuar.</p>`;
+      return;
+    }
+
     switchView("myProfile");
   } else {
     document.getElementById("login-button").style.display = "inline-block";
@@ -55,28 +60,27 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// Cambiar vistas
 function switchView(view) {
-  Object.values(views).forEach(v => (v.style.display = "none"));
+  Object.values(views).forEach(v => v.style.display = "none");
   Object.values(navButtons).forEach(b => b.classList.remove("active"));
   views[view].style.display = "block";
   navButtons[view].classList.add("active");
   if (view === "myProfile") loadMyProfile();
   if (view === "explore") loadUserList();
-  if (view === "editProfile") renderEditForm();
 }
 
 navButtons.myProfile.addEventListener("click", () => switchView("myProfile"));
-navButtons.editProfile.addEventListener("click", () => switchView("editProfile"));
 navButtons.explore.addEventListener("click", () => switchView("explore"));
 
-// Cargar perfil
+// Cargar perfil actual
 async function loadMyProfile() {
   const container = document.getElementById("profile-display-content");
   const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
   if (profileSnap.exists()) {
     const data = profileSnap.data();
 
-    // Nombre con link si existe
+    // Nombre con link opcional
     let nameHTML = data.name;
     if (data.photoLink) {
       nameHTML = `<a href="${data.photoLink}" target="_blank" rel="noopener noreferrer">${data.name}</a>`;
@@ -94,7 +98,7 @@ async function loadMyProfile() {
   }
 }
 
-// Explorar usuarios
+// Cargar lista de otros usuarios
 async function loadUserList() {
   const container = document.getElementById("user-list-container");
   container.innerHTML = "";
@@ -111,57 +115,3 @@ async function loadUserList() {
     }
   });
 }
-
-// Renderizar formulario editar perfil
-async function renderEditForm() {
-  const container = document.getElementById("profile-edit-form");
-  const profileRef = doc(db, "profiles", currentUser.uid);
-  const profileSnap = await getDoc(profileRef);
-  const data = profileSnap.exists() ? profileSnap.data() : {};
-
-  container.innerHTML = `
-    <fieldset>
-      <legend>Tu perfil público</legend>
-
-      <label for="edit-name">Nombre:</label>
-      <input type="text" id="edit-name" value="${data.name || ''}" required />
-
-      <label for="edit-image-url">URL de imagen de perfil:</label>
-      <input type="url" id="edit-image-url" value="${data.image || ''}" placeholder="https://ejemplo.com/tu-foto.jpg" />
-
-      <label for="edit-link">Link (enlace) asociado al nombre (opcional):</label>
-      <input type="url" id="edit-link" value="${data.photoLink || ''}" placeholder="https://tusitio.com" />
-
-      <label for="edit-description">Descripción:</label>
-      <textarea id="edit-description" rows="3">${data.description || ''}</textarea>
-    </fieldset>
-  `;
-}
-
-// Guardar perfil
-document.getElementById("save-profile-button").addEventListener("click", async () => {
-  const name = document.getElementById("edit-name").value.trim();
-  const image = document.getElementById("edit-image-url").value.trim();
-  const photoLink = document.getElementById("edit-link").value.trim();
-  const description = document.getElementById("edit-description").value.trim();
-
-  if (!name) {
-    alert("El nombre es obligatorio.");
-    return;
-  }
-
-  await setDoc(
-    doc(db, "profiles", currentUser.uid),
-    {
-      name,
-      image: image || null,
-      photoLink: photoLink || null,
-      description: description || null,
-    },
-    { merge: true }
-  );
-
-  alert("✅ Perfil actualizado");
-  switchView("myProfile");
-  loadMyProfile();
-});
