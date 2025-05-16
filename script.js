@@ -1,7 +1,9 @@
+// Importar la función startOnboarding
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 import { searchMedia } from "./api-handler.js";
+import { startOnboarding } from "./onboarding.js"; // Importamos startOnboarding
 
 // Config Firebase
 const firebaseConfig = {
@@ -47,7 +49,20 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     const profileSnap = await getDoc(doc(db, "profiles", user.uid));
     if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) {
-      document.getElementById("app-container").innerHTML = `<p class="placeholder-text">Completa tu perfil para continuar.</p>`;
+      // Mostrar un botón explícito para completar el perfil
+      document.getElementById("app-container").innerHTML = `
+        <div class="profile-incomplete">
+          <h3>¡Bienvenido a Anti-Social!</h3>
+          <p class="placeholder-text">Tu perfil no está completo. Comparte tus gustos e intereses para continuar.</p>
+          <button id="complete-profile-btn" class="primary-btn">Completar mi perfil</button>
+        </div>
+      `;
+      
+      // Añadir evento al botón para iniciar el onboarding
+      document.getElementById("complete-profile-btn").addEventListener("click", () => {
+        startOnboarding(user.uid);
+      });
+      
       return;
     }
     switchView("myProfile");
