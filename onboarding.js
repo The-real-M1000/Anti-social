@@ -1,12 +1,33 @@
 import { searchMedia } from "./api-handler.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
 // Obtener referencia a Firestore
 const db = getFirestore();
+const auth = getAuth();
 
-function askForDetails(uid, categories, index = 0, interests = {}) {
+async function askForDetails(uid, categories, index = 0, interests = {}) {
   const current = categories[index];
   const container = document.getElementById("app-container");
+  
+  // Obtener datos del usuario actual de Google Auth
+  const user = auth.currentUser;
+  
+  // Intentar obtener perfil existente
+  const profileSnap = await getDoc(doc(db, "profiles", uid));
+  const userData = profileSnap.exists() ? profileSnap.data() : {};
+  
+  // Si es el primer paso (index 0), crear o actualizar el documento básico del perfil
+  if (index === 0 && user) {
+    await setDoc(doc(db, "profiles", uid), {
+      name: user.displayName || "Usuario",
+      image: user.photoURL || "",
+      email: user.email || "",
+      // Los intereses se añadirán en pasos posteriores
+      onboardingComplete: false
+    }, { merge: true });
+  }
+  
   container.innerHTML = `
     <form id="interest-form" class="onboarding">
       <h2>💡 ${current}</h2>
@@ -34,7 +55,7 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
       </div>
       
       <br><br>
-      <button type="submit">Finalizar</button>
+      <button type="submit">Siguiente</button>
     </form>
   `;
 
@@ -44,6 +65,11 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
   const previewImg = document.getElementById("preview-img");
   const imageResultsContainer = document.getElementById("image-results-container");
   const imageResultsGrid = document.getElementById("image-results-grid");
+  
+  // Cambiar el texto del botón en el último paso
+  if (index === categories.length - 1) {
+    document.querySelector("#interest-form button[type='submit']").textContent = "Finalizar";
+  }
 
   // Buscar imagen automáticamente cuando se pierde el foco del campo nombre
   nameInput.addEventListener("blur", async () => {
@@ -149,24 +175,27 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
 
     interests[current] = { name, reason, image };
 
+    // Guardamos los intereses actualizados después de cada paso
+    try {
+      await setDoc(doc(db, "profiles", uid), {
+        interests,
+        // Solo marcamos onboardingComplete como true si es el último paso
+        ...(index === categories.length - 1 ? { onboardingComplete: true } : {})
+      }, { merge: true });
+    } catch (error) {
+      console.error("Error al guardar el interés:", error);
+      alert("Error al guardar. Intenta de nuevo más tarde.");
+      return;
+    }
+
     // Verificar si hay más categorías
     if (index < categories.length - 1) {
       // Ir a la siguiente categoría
       askForDetails(uid, categories, index + 1, interests);
     } else {
       // Completar el proceso
-      try {
-        await setDoc(doc(db, "profiles", uid), {
-          interests,
-          onboardingComplete: true
-        }, { merge: true });
-
-        alert("✅ ¡Perfil configurado!");
-        location.reload();
-      } catch (error) {
-        console.error("Error al guardar el perfil:", error);
-        alert("Error al guardar. Intenta de nuevo más tarde.");
-      }
+      alert("✅ ¡Perfil configurado!");
+      location.reload();
     }
   });
 }
