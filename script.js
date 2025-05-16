@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -41,7 +42,6 @@ document.getElementById("close-public-profile").addEventListener("click", () => 
 // Estado de sesión
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
-
   document.getElementById("login-button").style.display = user ? "none" : "inline-block";
   document.getElementById("logout-button").style.display = user ? "inline-block" : "none";
 
@@ -117,49 +117,84 @@ async function loadMyProfile() {
   document.getElementById("add-interest-btn").addEventListener("click", showInterestForm);
 }
 
-// Añadir más gustos
-function showInterestForm() {
+// Formulario para añadir gusto
+async function showInterestForm() {
   const container = document.getElementById("profile-display-content");
   if (document.getElementById("new-interest-form")) return;
+
+  const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
+  const existingData = profileSnap.exists() ? profileSnap.data() : {};
+  const existingCategories = existingData.interests ? Object.keys(existingData.interests) : [];
+
+  const defaultCategories = ["Películas", "Series", "Juegos", "Música", "Libros", "Hobbies"];
+  const allCategories = [...new Set([...defaultCategories, ...existingCategories])];
 
   container.innerHTML += `
     <form id="new-interest-form" style="margin-top: 1em;">
       <h4>Nuevo gusto</h4>
-      <label>Categoría:</label><input type="text" id="new-category"><br>
-      <label>Nombre:</label><input type="text" id="new-name"><br>
-      <label>¿Por qué te gusta?</label><textarea id="new-reason"></textarea><br>
-      <label>Imagen (URL):</label><input type="url" id="new-img"><br>
+      <label>Categoría:</label>
+      <select id="new-category-select">
+        ${allCategories.map(cat => `<option value="${cat}">${cat}</option>`).join("")}
+        <option value="otra">Otra...</option>
+      </select>
+      <div id="custom-category-field" style="display:none; margin-top:0.5em;">
+        <input type="text" id="custom-category" placeholder="Escribe tu categoría" />
+      </div>
+      <label>Nombre:</label>
+      <input type="text" id="new-name"><br>
+      <label>¿Por qué te gusta?</label>
+      <textarea id="new-reason"></textarea><br>
+      <label>Imagen (URL):</label>
+      <input type="url" id="new-img"><br>
       <button type="submit">Guardar</button>
     </form>
   `;
 
+  const select = document.getElementById("new-category-select");
+  const customField = document.getElementById("custom-category-field");
+  select.addEventListener("change", () => {
+    customField.style.display = select.value === "otra" ? "block" : "none";
+  });
+
   document.getElementById("new-interest-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const cat = document.getElementById("new-category").value.trim();
+
+    const selectedCategory = select.value === "otra"
+      ? document.getElementById("custom-category").value.trim()
+      : select.value;
+
     const name = document.getElementById("new-name").value.trim();
     const reason = document.getElementById("new-reason").value.trim();
     const image = document.getElementById("new-img").value.trim();
-    if (!cat || !name) return alert("Categoría y nombre son obligatorios");
 
-    const ref = doc(db, "profiles", currentUser.uid);
-    const snap = await getDoc(ref);
-    const data = snap.exists() ? snap.data() : {};
-    const interests = { ...data.interests, [cat]: { name, reason, image } };
-    await setDoc(ref, { interests }, { merge: true });
+    if (!selectedCategory || !name) {
+      alert("La categoría y el nombre son obligatorios");
+      return;
+    }
 
-    alert("🎉 Gusto añadido");
+    const updatedInterests = {
+      ...existingData.interests,
+      [selectedCategory]: { name, reason, image }
+    };
+
+    await setDoc(doc(db, "profiles", currentUser.uid), {
+      interests: updatedInterests
+    }, { merge: true });
+
+    alert("🎉 Gusto añadido correctamente");
     loadMyProfile();
   });
 }
 
-// Cargar lista de usuarios
+// Explorar perfiles
 async function loadUserList() {
   const container = document.getElementById("user-list-container");
   container.innerHTML = "";
-  const all = await getDocs(collection(db, "profiles"));
-  all.forEach(docSnap => {
-    const uid = docSnap.id;
+  const querySnapshot = await getDocs(collection(db, "profiles"));
+  querySnapshot.forEach((docSnap) => {
     const data = docSnap.data();
+    const uid = docSnap.id;
+
     const card = document.createElement("div");
     card.className = "user-card";
     card.innerHTML = `
@@ -174,13 +209,13 @@ async function loadUserList() {
 // Mostrar perfil público
 async function showPublicProfile(userId) {
   const container = document.getElementById("public-profile-content");
-  const snap = await getDoc(doc(db, "profiles", userId));
-  if (!snap.exists()) {
+  const profileSnap = await getDoc(doc(db, "profiles", userId));
+  if (!profileSnap.exists()) {
     container.innerHTML = "<p>Perfil no encontrado.</p>";
     return;
   }
 
-  const data = snap.data();
+  const data = profileSnap.data();
   let nameHTML = data.name;
   if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
 
