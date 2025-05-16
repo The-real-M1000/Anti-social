@@ -195,10 +195,16 @@ async function showInterestForm() {
       return;
     }
 
-    const interests = existingData.interests || {};
+    let interests = existingData.interests || {};
 
-    if (!interests[selectedCategory]) interests[selectedCategory] = [];
-    interests[selectedCategory].push({ name, reason, image });
+    let catArray = interests[selectedCategory];
+    if (!catArray) {
+      catArray = [];
+    } else if (!Array.isArray(catArray)) {
+      catArray = [catArray];
+    }
+    catArray.push({ name, reason, image });
+    interests[selectedCategory] = catArray;
 
     await setDoc(doc(db, "profiles", currentUser.uid), {
       interests
