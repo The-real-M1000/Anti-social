@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
-// Config Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -21,7 +20,6 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 let currentViewBeforePublic = "explore";
 
-// UI refs
 const navButtons = {
   myProfile: document.getElementById("nav-my-profile"),
   explore: document.getElementById("nav-explore")
@@ -96,12 +94,16 @@ async function loadMyProfile() {
     let html = "<ul>";
     if (filterCat === "all") {
       for (const cat of categories) {
-        for (const item of data.interests[cat]) {
+        let items = data.interests[cat];
+        if (items && !Array.isArray(items)) items = [items];
+        for (const item of items || []) {
           html += renderInterestItem(cat, item);
         }
       }
     } else {
-      for (const item of data.interests[filterCat] || []) {
+      let items = data.interests[filterCat];
+      if (items && !Array.isArray(items)) items = [items];
+      for (const item of items || []) {
         html += renderInterestItem(filterCat, item);
       }
     }
@@ -246,7 +248,9 @@ async function showPublicProfile(userId) {
   if (data.interests) {
     interestsHTML = "<h3>Gustos</h3><ul>";
     for (const [cat, items] of Object.entries(data.interests)) {
-      for (const item of items) {
+      let arr = items;
+      if (arr && !Array.isArray(arr)) arr = [arr];
+      for (const item of arr) {
         interestsHTML += `
           <li>
             <strong>${cat}:</strong> ${item.name}
