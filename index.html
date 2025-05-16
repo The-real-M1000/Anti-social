@@ -2,11 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Anti-Social</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -15,7 +15,7 @@
     <button id="nav-edit-profile">Editar Perfil</button>
     <button id="nav-explore">Descubrir</button>
     <button id="login-button">Iniciar sesión</button>
-    <button id="logout-button" style="display: none;">Cerrar sesión</button>
+    <button id="logout-button" style="display:none;">Cerrar sesión</button>
   </nav>
 
   <main id="app-container">
@@ -24,169 +24,19 @@
       <div id="profile-display-content"></div>
     </section>
 
-    <section id="edit-profile-view" class="view-section" style="display: none;">
+    <section id="edit-profile-view" class="view-section" style="display:none;">
       <h2>Editar Perfil</h2>
       <div id="profile-edit-form"></div>
       <button id="save-profile-button">Guardar Perfil</button>
     </section>
 
-    <section id="explore-view" class="view-section" style="display: none;">
+    <section id="explore-view" class="view-section" style="display:none;">
       <h2>Descubrir Usuarios</h2>
       <div id="user-list-container"></div>
     </section>
   </main>
 
-  <!-- Firebase y lógica -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
-    import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
-      authDomain: "anti-social-18930.firebaseapp.com",
-      projectId: "anti-social-18930",
-      storageBucket: "anti-social-18930.appspot.com",
-      messagingSenderId: "85648736312",
-      appId: "1:85648736312:web:c8ec3cda6d2f08d397e6cd",
-      measurementId: "G-BRWL7419ZQ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth();
-    const provider = new GoogleAuthProvider();
-
-    let currentUser = null;
-
-    const loginBtn = document.getElementById("login-button");
-    const logoutBtn = document.getElementById("logout-button");
-
-    loginBtn.addEventListener("click", () => {
-      signInWithPopup(auth, provider)
-        .then((result) => {
-          currentUser = result.user;
-          updateUI();
-        })
-        .catch((error) => {
-          alert("Error de login: " + error.message);
-        });
-    });
-
-    logoutBtn.addEventListener("click", () => {
-      signOut(auth);
-    });
-
-    onAuthStateChanged(auth, (user) => {
-      currentUser = user;
-      updateUI();
-    });
-
-    function updateUI() {
-      if (currentUser) {
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        switchView("myProfile");
-        loadMyProfile();
-      } else {
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
-        document.getElementById("app-container").innerHTML = `
-          <p class="placeholder-text">Por favor inicia sesión para ver tu perfil.</p>
-        `;
-      }
-    }
-
-    const views = {
-      myProfile: document.getElementById("my-profile-view"),
-      editProfile: document.getElementById("edit-profile-view"),
-      explore: document.getElementById("explore-view")
-    };
-
-    const navButtons = {
-      myProfile: document.getElementById("nav-my-profile"),
-      editProfile: document.getElementById("nav-edit-profile"),
-      explore: document.getElementById("nav-explore")
-    };
-
-    function switchView(view) {
-      if (!currentUser) return;
-      Object.values(views).forEach(v => v.style.display = "none");
-      Object.values(navButtons).forEach(b => b.classList.remove("active"));
-      views[view].style.display = "block";
-      navButtons[view].classList.add("active");
-
-      if (view === "myProfile") loadMyProfile();
-      if (view === "explore") loadUserList();
-      if (view === "editProfile") renderEditForm();
-    }
-
-    navButtons.myProfile.addEventListener("click", () => switchView("myProfile"));
-    navButtons.editProfile.addEventListener("click", () => switchView("editProfile"));
-    navButtons.explore.addEventListener("click", () => switchView("explore"));
-
-    async function renderEditForm() {
-      const container = document.getElementById("profile-edit-form");
-      const profileRef = doc(db, "profiles", currentUser.uid);
-      const profileSnap = await getDoc(profileRef);
-      const data = profileSnap.exists() ? profileSnap.data() : { name: "", description: "", image: "" };
-
-      container.innerHTML = `
-        <fieldset>
-          <legend>Tu Información</legend>
-          <label>Nombre:</label>
-          <input type="text" id="edit-name" value="${data.name || ''}" required>
-          <label>Descripción:</label>
-          <textarea id="edit-description" required>${data.description || ''}</textarea>
-          <label>Imagen (URL):</label>
-          <input type="url" id="edit-image" value="${data.image || ''}" required>
-        </fieldset>
-      `;
-    }
-
-    document.getElementById("save-profile-button").addEventListener("click", async () => {
-      const name = document.getElementById("edit-name").value;
-      const description = document.getElementById("edit-description").value;
-      const image = document.getElementById("edit-image").value;
-
-      await setDoc(doc(db, "profiles", currentUser.uid), { name, description, image });
-      alert("Perfil guardado");
-      switchView("myProfile");
-    });
-
-    async function loadMyProfile() {
-      const container = document.getElementById("profile-display-content");
-      const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
-      if (profileSnap.exists()) {
-        const data = profileSnap.data();
-        container.innerHTML = `
-          <div class="profile-header">
-            <img src="${data.image}" />
-            <h2>${data.name}</h2>
-          </div>
-          <p>${data.description}</p>
-        `;
-      } else {
-        container.innerHTML = `<p class="placeholder-text">Aún no has creado tu perfil.</p>`;
-      }
-    }
-
-    async function loadUserList() {
-      const container = document.getElementById("user-list-container");
-      container.innerHTML = "";
-      const querySnapshot = await getDocs(collection(db, "profiles"));
-      querySnapshot.forEach((docSnap) => {
-        if (docSnap.id !== currentUser.uid) {
-          const data = docSnap.data();
-          container.innerHTML += `
-            <div class="user-card">
-              <img src="${data.image}" />
-              <span>${data.name}</span>
-            </div>
-          `;
-        }
-      });
-    }
-  </script>
+  <script src="script.js" type="module"></script>
+  <script src="onboarding.js" type="module"></script>
 </body>
 </html>

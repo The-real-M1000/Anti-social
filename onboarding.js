@@ -94,10 +94,14 @@ async function handleNextStep(uid) {
 
 async function saveOnboardingData(uid) {
   const profileRef = doc(db, "profiles", uid);
-  await setDoc(profileRef, {
-    onboardingComplete: true,
-    interests: userAnswers
-  }, { merge: true });
+  await setDoc(
+    profileRef,
+    {
+      onboardingComplete: true,
+      interests: userAnswers
+    },
+    { merge: true }
+  );
 
   document.getElementById("app-container").innerHTML = `
     <p class="placeholder-text">¡Gracias! Tu perfil ha sido configurado.</p>
