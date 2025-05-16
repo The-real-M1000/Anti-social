@@ -169,6 +169,9 @@ async function loadMyProfile() {
     <div class="profile-header">
       <img src="${data.image || currentUser.photoURL || "default-profile.png"}" />
       <h2>${nameHTML}</h2>
+      <button id="share-profile-btn" class="share-profile-button">
+        <i class="fas fa-share-alt"></i> Compartir mi perfil
+      </button>
     </div>
     <p>${data.description || ""}</p>
     <div id="filters-container">${allBtn}${catBtns}</div>
@@ -188,8 +191,101 @@ async function loadMyProfile() {
   });
 
   document.getElementById("add-interest-btn").addEventListener("click", showInterestForm);
+  
+  // Añadir evento al botón de compartir
+  document.getElementById("share-profile-btn").addEventListener("click", () => {
+    shareProfile(currentUser.uid);
+  });
 }
 
+// Añadir la nueva función para compartir el perfil
+function shareProfile(userId) {
+  // Crear un enlace compartible basado en el ID del usuario
+  const shareUrl = `${window.location.origin}${window.location.pathname}?profile=${userId}`;
+  
+  // Verificar si el navegador soporta la API de compartir
+  if (navigator.share) {
+    navigator.share({
+      title: 'Mi perfil en Anti-Social',
+      text: '¡Echa un vistazo a mi perfil en Anti-Social!',
+      url: shareUrl
+    })
+    .then(() => console.log('Compartido exitosamente'))
+    .catch((error) => {
+      console.error('Error al compartir:', error);
+      fallbackShare(shareUrl);
+    });
+  } else {
+    fallbackShare(shareUrl);
+  }
+}
+
+// Fallback para dispositivos que no soportan la API de compartir
+function fallbackShare(url) {
+  // Crear un modal con el enlace para copiar
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'modal-overlay';
+  
+  const modalContent = document.createElement('div');
+  modalContent.className = 'modal-content';
+  modalContent.innerHTML = `
+    <h3>Compartir mi perfil</h3>
+    <p>Copia el siguiente enlace:</p>
+    <div class="copy-link-container">
+      <input type="text" id="share-link-input" value="${url}" readonly>
+      <button id="copy-link-btn">Copiar</button>
+    </div>
+    <button id="close-modal-btn" class="close-modal-btn">Cerrar</button>
+  `;
+  
+  modalOverlay.appendChild(modalContent);
+  document.body.appendChild(modalOverlay);
+  
+  // Seleccionar todo el texto al hacer clic en el input
+  const linkInput = document.getElementById('share-link-input');
+  linkInput.addEventListener('click', () => {
+    linkInput.select();
+  });
+  
+  // Copiar el enlace al portapapeles
+  document.getElementById('copy-link-btn').addEventListener('click', () => {
+    linkInput.select();
+    document.execCommand('copy');
+    
+    const copyBtn = document.getElementById('copy-link-btn');
+    copyBtn.textContent = '¡Copiado!';
+    copyBtn.classList.add('copied');
+    
+    setTimeout(() => {
+      copyBtn.textContent = 'Copiar';
+      copyBtn.classList.remove('copied');
+    }, 2000);
+  });
+  
+  // Cerrar el modal
+  document.getElementById('close-modal-btn').addEventListener('click', () => {
+    document.body.removeChild(modalOverlay);
+  });
+  
+  // También cerrar si se hace clic fuera del modal
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) {
+      document.body.removeChild(modalOverlay);
+    }
+  });
+}
+
+// Modificar la inicialización para verificar si hay un parámetro de perfil en la URL
+window.addEventListener('DOMContentLoaded', () => {
+  // Verificar si hay un parámetro de perfil en la URL para mostrar un perfil compartido
+  const urlParams = new URLSearchParams(window.location.search);
+  const sharedProfileId = urlParams.get('profile');
+  
+  if (sharedProfileId) {
+    // Mostrar el perfil compartido
+    showPublicProfile(sharedProfileId);
+  }
+});
 async function showInterestForm() {
   const container = document.getElementById("profile-display-content");
   if (document.getElementById("new-interest-form")) return;
