@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+import { searchMedia } from "./api-handler.js";
 
 // Config Firebase
 const firebaseConfig = {
@@ -92,27 +93,45 @@ async function loadMyProfile() {
 
   function renderInterests(filterCat) {
     if (!data.interests) return "<p>No tienes gustos registrados.</p>";
-    let html = "<ul>";
+    let html = "<div class='interests-grid'>";
     if (filterCat === "all") {
       for (const cat of categories) {
         let items = data.interests[cat];
         if (items && !Array.isArray(items)) items = [items];
-        html += `<li><strong>${cat}:</strong><ul>`;
+        
         for (const item of items || []) {
-          html += `<li>${item.name}</li>`;
+          html += `
+            <div class="interest-card">
+              <div class="interest-image">
+                <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
+              </div>
+              <div class="interest-info">
+                <h4>${item.name}</h4>
+                <span class="interest-category">${cat}</span>
+                ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
+              </div>
+            </div>`;
         }
-        html += "</ul></li>";
       }
     } else {
       let items = data.interests[filterCat];
       if (items && !Array.isArray(items)) items = [items];
-      html += `<li><strong>${filterCat}:</strong><ul>`;
+      
       for (const item of items || []) {
-        html += `<li>${item.name}</li>`;
-      }
-      html += "</ul></li>";
+        html += `
+          <div class="interest-card">
+            <div class="interest-image">
+              <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
+            </div>
+            <div class="interest-info">
+              <h4>${item.name}</h4>
+              <span class="interest-category">${filterCat}</span>
+              ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
+            </div>
+          </div>`;
+      }  
     }
-    html += "</ul>";
+    html += "</div>";
     return html;
   }
 
@@ -165,18 +184,95 @@ async function showInterestForm() {
       </div>
       <label>Nombre:</label>
       <input type="text" id="new-name"><br>
+      <div id="api-search-result"></div>
       <label>¿Por qué te gusta?</label>
       <textarea id="new-reason"></textarea><br>
       <label>Imagen (URL):</label>
-      <input type="url" id="new-img"><br>
+      <div class="image-search-container">
+        <input type="url" id="new-img" placeholder="URL de imagen o se buscará automáticamente">
+        <button type="button" id="search-image-btn">Buscar imagen</button>
+      </div>
+      <div id="image-preview" class="image-preview" style="display:none;">
+        <img id="preview-img" src="" alt="Vista previa">
+      </div>
       <button type="submit">Guardar</button>
     </form>
   `;
 
   const select = document.getElementById("new-category-select");
   const customField = document.getElementById("custom-category-field");
+  const imagePreview = document.getElementById("image-preview");
+  const previewImg = document.getElementById("preview-img");
+  const nameInput = document.getElementById("new-name");
+  const imageInput = document.getElementById("new-img");
+  
   select.addEventListener("change", () => {
     customField.style.display = select.value === "otra" ? "block" : "none";
+  });
+
+  // Evento para buscar imagen automáticamente cuando se escribe un nombre
+  nameInput.addEventListener("blur", async () => {
+    const title = nameInput.value.trim();
+    const selectedCategory = select.value === "otra"
+      ? document.getElementById("custom-category").value.trim()
+      : select.value;
+    
+    if (title && selectedCategory && !imageInput.value) {
+      try {
+        document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
+        const result = await searchMedia(selectedCategory, title);
+        document.getElementById("api-search-result").innerHTML = '';
+        
+        if (result.found) {
+          imageInput.value = result.imageUrl;
+          previewImg.src = result.imageUrl;
+          imagePreview.style.display = "block";
+        }
+      } catch (error) {
+        console.error("Error al buscar imagen:", error);
+      }
+    }
+  });
+
+  // Evento para el botón de búsqueda de imagen
+  document.getElementById("search-image-btn").addEventListener("click", async () => {
+    const title = nameInput.value.trim();
+    const selectedCategory = select.value === "otra"
+      ? document.getElementById("custom-category").value.trim()
+      : select.value;
+    
+    if (!title) {
+      alert("Por favor ingresa un nombre para buscar");
+      return;
+    }
+    
+    try {
+      document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
+      const result = await searchMedia(selectedCategory, title);
+      
+      if (result.found) {
+        document.getElementById("api-search-result").innerHTML = '<p class="success-msg">¡Imagen encontrada!</p>';
+        imageInput.value = result.imageUrl;
+        previewImg.src = result.imageUrl;
+        imagePreview.style.display = "block";
+      } else {
+        document.getElementById("api-search-result").innerHTML = '<p class="error-msg">No se encontró imagen. Intenta con otro título o añade la URL manualmente.</p>';
+      }
+    } catch (error) {
+      console.error("Error al buscar imagen:", error);
+      document.getElementById("api-search-result").innerHTML = '<p class="error-msg">Error al buscar imagen. Intenta más tarde.</p>';
+    }
+  });
+
+  // Ver imagen en tiempo real cuando cambia la URL
+  imageInput.addEventListener("input", () => {
+    const url = imageInput.value.trim();
+    if (url) {
+      previewImg.src = url;
+      imagePreview.style.display = "block";
+    } else {
+      imagePreview.style.display = "none";
+    }
   });
 
   document.getElementById("new-interest-form").addEventListener("submit", async (e) => {
@@ -186,9 +282,9 @@ async function showInterestForm() {
       ? document.getElementById("custom-category").value.trim()
       : select.value;
 
-    const name = document.getElementById("new-name").value.trim();
+    const name = nameInput.value.trim();
     const reason = document.getElementById("new-reason").value.trim();
-    const image = document.getElementById("new-img").value.trim();
+    const image = imageInput.value.trim();
 
     if (!selectedCategory || !name) {
       alert("La categoría y el nombre son obligatorios");
@@ -248,17 +344,26 @@ async function showPublicProfile(userId) {
 
   let interestsHTML = "";
   if (data.interests) {
-    interestsHTML = "<h3>Gustos</h3><ul>";
+    interestsHTML = `<h3>Gustos</h3><div class="interests-grid">`;
     for (const [cat, items] of Object.entries(data.interests)) {
       let arr = items;
       if (arr && !Array.isArray(arr)) arr = [arr];
-      interestsHTML += `<li><strong>${cat}:</strong><ul>`;
+      
       for (const item of arr) {
-        interestsHTML += `<li>${item.name}</li>`;
+        interestsHTML += `
+          <div class="interest-card">
+            <div class="interest-image">
+              <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
+            </div>
+            <div class="interest-info">
+              <h4>${item.name}</h4>
+              <span class="interest-category">${cat}</span>
+              ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
+            </div>
+          </div>`;
       }
-      interestsHTML += "</ul></li>";
     }
-    interestsHTML += "</ul>";
+    interestsHTML += "</div>";
   }
 
   container.innerHTML = `
