@@ -4,6 +4,9 @@ const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 const RAWG_BASE_URL = "https://api.rawg.io/api";
 const GOOGLE_BOOKS_BASE_URL = "https://www.googleapis.com/books/v1/volumes";
+const GOOGLE_SEARCH_API_KEY = "AIzaSyBpxqtUDjlTpHvqdgIP-ibcTfujwaIGXLg";
+const GOOGLE_SEARCH_CX = "233572f6d5ef143cc";
+const GOOGLE_SEARCH_BASE_URL = "https://www.googleapis.com/customsearch/v1";
 
 // Función genérica para hacer peticiones fetch
 async function fetchData(url, options = {}) {
@@ -110,6 +113,25 @@ export async function searchBookImage(title) {
   return [];
 }
 
+// Nueva función: Buscar imágenes usando Google Custom Search
+export async function searchGoogleImages(query) {
+  const searchUrl = `${GOOGLE_SEARCH_BASE_URL}?key=${GOOGLE_SEARCH_API_KEY}&cx=${GOOGLE_SEARCH_CX}&q=${encodeURIComponent(query)}&searchType=image&num=5`;
+  
+  const data = await fetchData(searchUrl);
+  
+  if (data && data.items && data.items.length > 0) {
+    return data.items.map(item => ({
+      id: item.link, // Usar la URL como ID
+      title: item.title || 'Sin título',
+      imageUrl: item.link,
+      thumbnailUrl: item.image?.thumbnailLink || item.link,
+      source: item.displayLink || '',
+      overview: item.snippet || ''
+    }));
+  }
+  return [];
+}
+
 // Función principal que determina qué API usar según la categoría
 export async function getImageForInterest(category, title) {
   if (!title) return [];
@@ -124,14 +146,25 @@ export async function getImageForInterest(category, title) {
     return await searchGameImage(title);
   } else if (category === "libros") {
     return await searchBookImage(title);
+  } else {
+    // Si la categoría no coincide con ninguna de las específicas, usar búsqueda genérica de Google
+    const searchQuery = `${title} ${category}`;
+    return await searchGoogleImages(searchQuery);
   }
-  
-  return [];
 }
 
 // Función de búsqueda general para el formulario de intereses
 export async function searchMedia(category, title) {
   const results = await getImageForInterest(category, title);
+  return {
+    found: results.length > 0,
+    results: results
+  };
+}
+
+// Nueva función específica para buscar cualquier imagen sin importar la categoría
+export async function searchAnyImage(query) {
+  const results = await searchGoogleImages(query);
   return {
     found: results.length > 0,
     results: results

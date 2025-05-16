@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
-import { searchMedia } from "./api-handler.js";
+import { searchMedia, searchAnyImage } from "./api-handler.js";
 
 // Instead of initializing Firebase here, we'll use the instances passed from script.js
 let db = null;
@@ -51,10 +51,9 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
       <textarea id="fav-reason" rows="3"></textarea>
       
       <div>
-        <label>Imagen:</label>
         <div class="image-search-container">
-          <input type="url" id="fav-image" placeholder="URL de imagen o se buscará automáticamente">
-          <button type="button" id="search-image-btn">Buscar imagen</button>
+          <input type="text" id="image-search-query" placeholder="Buscar imágenes de Google (opcional)" />
+          <button type="button" id="search-image-btn">Buscar</button>
         </div>
         
         <div id="image-results-container" style="display:none; margin-top: 1em;">
@@ -64,7 +63,11 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
         
         <div id="image-preview" class="image-preview" style="display:none;">
           <img id="preview-img" src="" alt="Vista previa">
+          <button type="button" id="clear-image-btn" class="clear-image-btn">
+            <i class="fas fa-times"></i> Quitar imagen
+          </button>
         </div>
+        <input type="hidden" id="fav-image" />
       </div>
       
       <br><br>
@@ -73,9 +76,12 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
   `;
 
   const nameInput = document.getElementById("fav-name");
-  const imageInput = document.getElementById("fav-image");
+  const imageSearchInput = document.getElementById("image-search-query");
+  const searchBtn = document.getElementById("search-image-btn");
   const imagePreview = document.getElementById("image-preview");
   const previewImg = document.getElementById("preview-img");
+  const clearImageBtn = document.getElementById("clear-image-btn");
+  const imageInput = document.getElementById("fav-image");
   const imageResultsContainer = document.getElementById("image-results-container");
   const imageResultsGrid = document.getElementById("image-results-grid");
   
@@ -113,10 +119,11 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
         const imageCard = document.createElement('div');
         imageCard.className = 'image-result-card';
         imageCard.innerHTML = `
-          <img src="${item.imageUrl}" alt="${item.title || 'Imagen ' + (index + 1)}">
+          <img src="${item.thumbnailUrl || item.imageUrl}" alt="${item.title || 'Imagen ' + (index + 1)}">
           <div class="image-result-info">
             <p>${item.title || 'Sin título'}</p>
             ${item.year ? `<span>${item.year}</span>` : ''}
+            ${item.source ? `<small>${item.source}</small>` : ''}
           </div>
         `;
         
@@ -140,23 +147,33 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
   }
 
   // Evento para el botón de búsqueda de imagen
-  document.getElementById("search-image-btn").addEventListener("click", async () => {
+  searchBtn.addEventListener("click", async () => {
     const title = nameInput.value.trim();
+    const searchQuery = imageSearchInput.value.trim() || title;
     
-    if (!title) {
-      alert("Por favor ingresa un nombre para buscar");
+    if (!searchQuery) {
+      alert("Por favor ingresa un término de búsqueda");
       return;
     }
     
     try {
-      document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
-      const result = await searchMedia(current, title);
+      document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imágenes...</p>';
+      
+      let result;
+      // Si hay un término de búsqueda específico, usamos la búsqueda genérica
+      if (imageSearchInput.value.trim()) {
+        result = await searchAnyImage(searchQuery);
+      } else {
+        // De lo contrario, usamos la búsqueda por categoría
+        result = await searchMedia(current, title);
+      }
+      
       document.getElementById("api-search-result").innerHTML = '';
       
       if (result && result.found && result.results && result.results.length > 0) {
         displayImageResults(result.results);
       } else {
-        document.getElementById("api-search-result").innerHTML = '<p class="error-msg">No se encontró imagen. Intenta con otro título o añade la URL manualmente.</p>';
+        document.getElementById("api-search-result").innerHTML = '<p class="error-msg">No se encontró imagen. Intenta con otro término de búsqueda.</p>';
       }
     } catch (error) {
       console.error("Error al buscar imagen:", error);
@@ -164,15 +181,10 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
     }
   });
 
-  // Ver imagen en tiempo real cuando cambia la URL manualmente
-  imageInput.addEventListener("input", () => {
-    const url = imageInput.value.trim();
-    if (url) {
-      previewImg.src = url;
-      imagePreview.style.display = "block";
-    } else {
-      imagePreview.style.display = "none";
-    }
+  // Limpiar imagen seleccionada
+  clearImageBtn.addEventListener("click", () => {
+    imageInput.value = "";
+    imagePreview.style.display = "none";
   });
 
   document.getElementById("interest-form").addEventListener("submit", async (e) => {
