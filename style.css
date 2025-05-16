@@ -242,33 +242,21 @@ main#app-container {
 /* Perfil de usuario estilo Twitter con imagen más pequeña */
 .profile-header {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 0;
-  border-bottom: none;
-  position: relative;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.profile-header .cover-image {
-  height: 120px;
-  background-color: var(--primary-color);
-  width: 100%;
-  border-radius: 12px 12px 0 0;
-}
-
-.profile-header img.profile-pic {
-  width: 60px;
-  height: 60px;
+.profile-header img {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 3px solid var(--background-color);
-  outline: 1px solid #8899A6;
-  margin-top: -30px;
-  margin-left: 15px;
-  margin-bottom: 0;
+  margin-right: 15px;
   object-fit: cover;
-  background-color: var(--card-bg);
-  position: relative;
-  z-index: 2;
+  border: 2px solid var(--background-color);
+  outline: 1px solid var(--border-color);
 }
 
 .profile-info {
