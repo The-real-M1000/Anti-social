@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 import { searchMedia } from "./api-handler.js";
-import { askForDetails } from "./onboarding.js"; // Importar la función de onboarding
+import { askForDetails, initializeModule } from "./onboarding.js"; // Importar también initializeModule
 
 // Config Firebase
 const firebaseConfig = {
@@ -19,6 +19,9 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+
+// Inicializar el módulo de onboarding con las instancias de Firebase
+initializeModule(db, auth);
 
 let currentUser = null;
 let currentViewBeforePublic = "explore";
@@ -87,9 +90,26 @@ navButtons.explore.addEventListener("click", () => switchView("explore"));
 
 async function loadMyProfile() {
   const container = document.getElementById("profile-display-content");
+  
+  if (!currentUser) {
+    container.innerHTML = `<p class="placeholder-text">Debes iniciar sesión para ver tu perfil.</p>`;
+    return;
+  }
+  
   const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
   if (!profileSnap.exists()) {
-    container.innerHTML = `<p class="placeholder-text">Aún no has creado tu perfil.</p>`;
+    container.innerHTML = `
+      <div class="no-profile-container">
+        <p class="placeholder-text">Aún no has creado tu perfil.</p>
+        <button id="create-profile-btn" class="create-profile-button">Crear mi perfil</button>
+      </div>
+    `;
+    
+    // Agregar evento al botón para iniciar el proceso de onboarding
+    document.getElementById("create-profile-btn").addEventListener("click", () => {
+      startOnboarding(currentUser.uid);
+    });
+    
     return;
   }
 
