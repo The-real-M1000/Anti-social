@@ -1,6 +1,7 @@
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
+import { searchMedia } from "./api-handler.js";
 
 // Config Firebase
 const firebaseConfig = {
@@ -103,14 +104,85 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
       <h2>💡 ${current}</h2>
       <label>¿Cuál es tu favorito?</label>
       <input type="text" id="fav-name" required />
+      <div id="api-search-result"></div>
       <label>¿Por qué te gusta?</label>
       <textarea id="fav-reason" rows="3"></textarea>
-      <label>Imagen (URL):</label>
-      <input type="url" id="fav-image" placeholder="https://..." />
+      <label>Imagen:</label>
+      <div class="image-search-container">
+        <input type="url" id="fav-image" placeholder="URL de imagen o se buscará automáticamente">
+        <button type="button" id="search-image-btn">Buscar imagen</button>
+      </div>
+      <div id="image-preview" class="image-preview" style="display:none;">
+        <img id="preview-img" src="" alt="Vista previa">
+      </div>
       <br><br>
       <button type="submit">Finalizar</button>
     </form>
   `;
+
+  const nameInput = document.getElementById("fav-name");
+  const imageInput = document.getElementById("fav-image");
+  const imagePreview = document.getElementById("image-preview");
+  const previewImg = document.getElementById("preview-img");
+
+  // Buscar imagen automáticamente cuando se pierde el foco del campo nombre
+  nameInput.addEventListener("blur", async () => {
+    const title = nameInput.value.trim();
+    
+    if (title && !imageInput.value) {
+      try {
+        document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
+        const result = await searchMedia(current, title);
+        document.getElementById("api-search-result").innerHTML = '';
+        
+        if (result.found) {
+          imageInput.value = result.imageUrl;
+          previewImg.src = result.imageUrl;
+          imagePreview.style.display = "block";
+        }
+      } catch (error) {
+        console.error("Error al buscar imagen:", error);
+      }
+    }
+  });
+
+  // Evento para el botón de búsqueda de imagen
+  document.getElementById("search-image-btn").addEventListener("click", async () => {
+    const title = nameInput.value.trim();
+    
+    if (!title) {
+      alert("Por favor ingresa un nombre para buscar");
+      return;
+    }
+    
+    try {
+      document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
+      const result = await searchMedia(current, title);
+      
+      if (result.found) {
+        document.getElementById("api-search-result").innerHTML = '<p class="success-msg">¡Imagen encontrada!</p>';
+        imageInput.value = result.imageUrl;
+        previewImg.src = result.imageUrl;
+        imagePreview.style.display = "block";
+      } else {
+        document.getElementById("api-search-result").innerHTML = '<p class="error-msg">No se encontró imagen. Intenta con otro título o añade la URL manualmente.</p>';
+      }
+    } catch (error) {
+      console.error("Error al buscar imagen:", error);
+      document.getElementById("api-search-result").innerHTML = '<p class="error-msg">Error al buscar imagen. Intenta más tarde.</p>';
+    }
+  });
+
+  // Ver imagen en tiempo real cuando cambia la URL
+  imageInput.addEventListener("input", () => {
+    const url = imageInput.value.trim();
+    if (url) {
+      previewImg.src = url;
+      imagePreview.style.display = "block";
+    } else {
+      imagePreview.style.display = "none";
+    }
+  });
 
   document.getElementById("interest-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -129,4 +201,3 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
     location.reload();
   });
 }
-
