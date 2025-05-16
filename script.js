@@ -187,14 +187,24 @@ async function showInterestForm() {
       <div id="api-search-result"></div>
       <label>¿Por qué te gusta?</label>
       <textarea id="new-reason"></textarea><br>
-      <label>Imagen (URL):</label>
-      <div class="image-search-container">
-        <input type="url" id="new-img" placeholder="URL de imagen o se buscará automáticamente">
-        <button type="button" id="search-image-btn">Buscar imagen</button>
+      
+      <div>
+        <label>Imagen (URL):</label>
+        <div class="image-search-container">
+          <input type="url" id="new-img" placeholder="URL de imagen o se buscará automáticamente">
+          <button type="button" id="search-image-btn">Buscar imagen</button>
+        </div>
+        
+        <div id="image-results-container" style="display:none; margin-top: 1em;">
+          <h4>Selecciona una imagen:</h4>
+          <div id="image-results-grid" class="image-results-grid"></div>
+        </div>
+        
+        <div id="image-preview" class="image-preview" style="display:none;">
+          <img id="preview-img" src="" alt="Vista previa">
+        </div>
       </div>
-      <div id="image-preview" class="image-preview" style="display:none;">
-        <img id="preview-img" src="" alt="Vista previa">
-      </div>
+      
       <button type="submit">Guardar</button>
     </form>
   `;
@@ -205,10 +215,47 @@ async function showInterestForm() {
   const previewImg = document.getElementById("preview-img");
   const nameInput = document.getElementById("new-name");
   const imageInput = document.getElementById("new-img");
+  const imageResultsContainer = document.getElementById("image-results-container");
+  const imageResultsGrid = document.getElementById("image-results-grid");
   
   select.addEventListener("change", () => {
     customField.style.display = select.value === "otra" ? "block" : "none";
   });
+
+  // Función para mostrar las opciones de imagen
+  function displayImageResults(results) {
+    imageResultsGrid.innerHTML = '';
+    
+    results.forEach((item, index) => {
+      if (item.imageUrl) {
+        const imageCard = document.createElement('div');
+        imageCard.className = 'image-result-card';
+        imageCard.innerHTML = `
+          <img src="${item.imageUrl}" alt="${item.title || 'Imagen ' + (index + 1)}">
+          <div class="image-result-info">
+            <p>${item.title || 'Sin título'}</p>
+            ${item.year ? `<span>${item.year}</span>` : ''}
+          </div>
+        `;
+        
+        imageCard.addEventListener('click', () => {
+          // Seleccionar esta imagen
+          imageInput.value = item.imageUrl;
+          previewImg.src = item.imageUrl;
+          imagePreview.style.display = "block";
+          imageResultsContainer.style.display = "none";
+        });
+        
+        imageResultsGrid.appendChild(imageCard);
+      }
+    });
+    
+    if (imageResultsGrid.children.length > 0) {
+      imageResultsContainer.style.display = "block";
+    } else {
+      document.getElementById("api-search-result").innerHTML = '<p class="error-msg">No se encontraron imágenes para este título.</p>';
+    }
+  }
 
   // Evento para buscar imagen automáticamente cuando se pierde el foco del campo nombre
   nameInput.addEventListener("blur", async () => {
@@ -223,10 +270,8 @@ async function showInterestForm() {
         const result = await searchMedia(selectedCategory, title);
         document.getElementById("api-search-result").innerHTML = '';
         
-        if (result && result.found) {
-          imageInput.value = result.imageUrl;
-          previewImg.src = result.imageUrl;
-          imagePreview.style.display = "block";
+        if (result && result.found && result.results && result.results.length > 0) {
+          displayImageResults(result.results);
         }
       } catch (error) {
         console.error("Error al buscar imagen:", error);
@@ -250,12 +295,10 @@ async function showInterestForm() {
     try {
       document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
       const result = await searchMedia(selectedCategory, title);
+      document.getElementById("api-search-result").innerHTML = '';
       
-      if (result && result.found) {
-        document.getElementById("api-search-result").innerHTML = '<p class="success-msg">¡Imagen encontrada!</p>';
-        imageInput.value = result.imageUrl;
-        previewImg.src = result.imageUrl;
-        imagePreview.style.display = "block";
+      if (result && result.found && result.results && result.results.length > 0) {
+        displayImageResults(result.results);
       } else {
         document.getElementById("api-search-result").innerHTML = '<p class="error-msg">No se encontró imagen. Intenta con otro título o añade la URL manualmente.</p>';
       }
@@ -265,7 +308,7 @@ async function showInterestForm() {
     }
   });
 
-  // Ver imagen en tiempo real cuando cambia la URL
+  // Ver imagen en tiempo real cuando cambia la URL manualmente
   imageInput.addEventListener("input", () => {
     const url = imageInput.value.trim();
     if (url) {
