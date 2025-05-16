@@ -1,122 +1,352 @@
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  
-  body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #eef1f5;
-    color: #333740;
-    line-height: 1.6;
-  }
-  
-  nav {
-    background-color: #333740;
-    padding: 1em 0;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  nav button {
-    background: transparent;
-    border: none;
-    padding: 0.8em 1.5em;
-    margin: 0 0.5em;
-    color: #f8f9fa;
-    cursor: pointer;
-    border-radius: 20px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: background-color 0.3s;
-  }
-  
-  nav button:hover, nav button.active {
-    background-color: #4A90E2;
-    color: white;
-    font-weight: 700;
-  }
-  
-  main#app-container {
-    padding: 2em;
-    max-width: 960px;
-    margin: 2em auto;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    border-radius: 8px;
-  }
-  
-  .view-section h2 {
-    border-bottom: 3px solid #4A90E2;
-    margin-bottom: 1.5em;
-    padding-bottom: 0.5em;
-    font-weight: 700;
-    color: #333740;
-  }
-  
-  .profile-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 2.5em;
-    padding-bottom: 2em;
-    border-bottom: 1px solid #dfe3e8;
-  }
-  
-  .profile-header img {
-    width: 160px;
-    height: 160px;
-    border-radius: 50%;
-    margin-right: 2em;
-    border: 5px solid #4A90E2;
-    object-fit: cover;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
-    background-color: #f0f0f0;
-  }
-  
-  .placeholder-text {
-    text-align: center;
-    color: #6c757d;
-    font-style: italic;
-    padding: 3em;
-    border: 1px dashed #ced4da;
-    border-radius: 8px;
-    font-size: 1.1em;
-  }
-  
-  #profile-edit-form input,
-  #profile-edit-form textarea {
-    width: 100%;
-    margin-bottom: 1em;
-    padding: 0.5em;
-    border-radius: 6px;
-    border: 1px solid #ced4da;
-    font-size: 1em;
-  }
-  
-  .user-card {
-    background: white;
-    border-radius: 8px;
-    padding: 1em;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    text-align: center;
-    margin-bottom: 1em;
-    cursor: pointer;
-    border: 1px solid #dfe3e8;
-    transition: background-color 0.3s;
-  }
-  
-  .user-card:hover {
-    background-color: #f8f9fa;
-  }
-  
-  .user-card img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    margin-bottom: 0.5em;
-    object-fit: cover;
-    border: 3px solid #4A90E2;
-    background-color: #f0f0f0;
-  }
-  
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #eef1f5;
+  color: #333740;
+  line-height: 1.6;
+}
+
+nav {
+  background-color: #333740;
+  padding: 1em 0;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+nav button {
+  background: transparent;
+  border: none;
+  padding: 0.8em 1.5em;
+  margin: 0 0.5em;
+  color: #f8f9fa;
+  cursor: pointer;
+  border-radius: 20px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: background-color 0.3s;
+}
+
+nav button:hover, nav button.active {
+  background-color: #4A90E2;
+  color: white;
+  font-weight: 700;
+}
+
+main#app-container {
+  padding: 2em;
+  max-width: 960px;
+  margin: 2em auto;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-radius: 8px;
+}
+
+.view-section h2 {
+  border-bottom: 3px solid #4A90E2;
+  margin-bottom: 1.5em;
+  padding-bottom: 0.5em;
+  font-weight: 700;
+  color: #333740;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2.5em;
+  padding-bottom: 2em;
+  border-bottom: 1px solid #dfe3e8;
+}
+
+.profile-header img {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  margin-right: 2em;
+  border: 5px solid #4A90E2;
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+  background-color: #f0f0f0;
+}
+
+.placeholder-text {
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  padding: 3em;
+  border: 1px dashed #ced4da;
+  border-radius: 8px;
+  font-size: 1.1em;
+}
+
+#profile-edit-form input,
+#profile-edit-form textarea {
+  width: 100%;
+  margin-bottom: 1em;
+  padding: 0.5em;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  font-size: 1em;
+}
+
+.user-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1em;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  text-align: center;
+  margin-bottom: 1em;
+  cursor: pointer;
+  border: 1px solid #dfe3e8;
+  transition: background-color 0.3s;
+}
+
+.user-card:hover {
+  background-color: #f8f9fa;
+}
+
+.user-card img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-bottom: 0.5em;
+  object-fit: cover;
+  border: 3px solid #4A90E2;
+  background-color: #f0f0f0;
+}
+
+/* Nuevos estilos para las tarjetas de intereses */
+.interests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.interest-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.interest-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.interest-image {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+}
+
+.interest-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.interest-card:hover .interest-image img {
+  transform: scale(1.05);
+}
+
+.interest-info {
+  padding: 1rem;
+}
+
+.interest-info h4 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.interest-category {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  margin-top: 0.5rem;
+  background-color: #f0f4f8;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #4A90E2;
+}
+
+.interest-reason {
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Estilos para formularios */
+.onboarding, #new-interest-form {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.onboarding h2, #new-interest-form h4 {
+  margin-bottom: 1.5rem;
+  color: #333;
+  text-align: center;
+}
+
+.onboarding label, #new-interest-form label {
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.onboarding input, 
+.onboarding textarea, 
+.onboarding select,
+#new-interest-form input,
+#new-interest-form textarea,
+#new-interest-form select {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.onboarding button, 
+#new-interest-form button {
+  background-color: #4A90E2;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  margin-top: 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.onboarding button:hover, 
+#new-interest-form button:hover {
+  background-color: #357ab8;
+}
+
+/* Estilos para los filtros */
+#filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-btn {
+  background-color: #f0f4f8;
+  border: 1px solid #dfe3e8;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background-color: #e3eaf2;
+}
+
+.filter-btn.active {
+  background-color: #4A90E2;
+  color: white;
+  border-color: #4A90E2;
+}
+
+/* Estilos para la búsqueda de imágenes */
+.image-search-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.image-search-container input {
+  flex: 1;
+}
+
+.image-search-container button {
+  white-space: nowrap;
+  margin-top: 0;
+}
+
+.image-preview {
+  margin-top: 1rem;
+  border: 1px solid #dfe3e8;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+}
+
+.image-preview img {
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+/* Estilos para mensajes de búsqueda */
+.searching-msg {
+  margin-top: 0.5rem;
+  color: #666;
+  font-style: italic;
+}
+
+.success-msg {
+  margin-top: 0.5rem;
+  color: #28a745;
+}
+
+.error-msg {
+  margin-top: 0.5rem;
+  color: #dc3545;
+}
+
+#add-interest-btn {
+  background-color: white;
+  color: #4A90E2;
+  border: 2px dashed #4A90E2;
+  padding: 0.8rem 1.5rem;
+  display: block;
+  width: 100%;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 1rem;
+  transition: background-color 0.2s;
+}
+
+#add-interest-btn:hover {
+  background-color: #f0f4f8;
+}
+
+#close-public-profile {
+  background-color: transparent;
+  color: #4A90E2;
+  border: none;
+  font-weight: 600;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+#close-public-profile:hover {
+  color: #357ab8;
+}
