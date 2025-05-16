@@ -1,6 +1,7 @@
-import { searchMedia } from "./api-handler.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+import { searchMedia } from "./api-handler.js";
 
 // Instead of initializing Firebase here, we'll use the instances passed from script.js
 let db = null;
