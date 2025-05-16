@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
-// Config Firebase
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -25,9 +25,11 @@ const navButtons = {
   myProfile: document.getElementById("nav-my-profile"),
   explore: document.getElementById("nav-explore")
 };
+
 const views = {
   myProfile: document.getElementById("my-profile-view"),
-  explore: document.getElementById("explore-view")
+  explore: document.getElementById("explore-view"),
+  publicProfile: document.getElementById("public-profile-view")
 };
 
 document.getElementById("login-button").addEventListener("click", () => {
@@ -36,6 +38,12 @@ document.getElementById("login-button").addEventListener("click", () => {
 document.getElementById("logout-button").addEventListener("click", () => {
   signOut(auth);
 });
+
+document.getElementById("close-public-profile").addEventListener("click", () => {
+  switchView(currentViewBeforePublic || "explore");
+});
+
+let currentViewBeforePublic = "explore";
 
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
@@ -60,8 +68,13 @@ onAuthStateChanged(auth, async (user) => {
 function switchView(view) {
   Object.values(views).forEach(v => (v.style.display = "none"));
   Object.values(navButtons).forEach(b => b.classList.remove("active"));
-  views[view].style.display = "block";
-  navButtons[view].classList.add("active");
+  if (view !== "publicProfile") {
+    views[view].style.display = "block";
+    if (navButtons[view]) navButtons[view].classList.add("active");
+    currentViewBeforePublic = view;
+  } else {
+    views.publicProfile.style.display = "block";
+  }
   if (view === "myProfile") loadMyProfile();
   if (view === "explore") loadUserList();
 }
@@ -80,7 +93,6 @@ async function loadMyProfile() {
       nameHTML = `<a href="${data.photoLink}" target="_blank" rel="noopener noreferrer">${data.name}</a>`;
     }
 
-    // Construir HTML para intereses
     let interestsHTML = "";
     if (data.interests) {
       interestsHTML = "<h3>Mis gustos</h3><ul>";
@@ -97,10 +109,10 @@ async function loadMyProfile() {
 
     container.innerHTML = `
       <div class="profile-header">
-        <img src="${data.image || 'default-profile.png'}" alt="Foto de perfil" />
+        <img src="${data.image || "default-profile.png"}" alt="Foto de perfil" />
         <h2>${nameHTML}</h2>
       </div>
-      <p>${data.description || ''}</p>
+      <p>${data.description || ""}</p>
       ${interestsHTML}
     `;
   } else {
@@ -115,12 +127,55 @@ async function loadUserList() {
   querySnapshot.forEach((docSnap) => {
     if (docSnap.id !== currentUser.uid) {
       const data = docSnap.data();
-      container.innerHTML += `
-        <div class="user-card">
-          <img src="${data.image || 'default-profile.png'}" alt="${data.name}" />
-          <span>${data.name}</span>
-        </div>
+      const card = document.createElement("div");
+      card.className = "user-card";
+      card.innerHTML = `
+        <img src="${data.image || "default-profile.png"}" alt="${data.name}" />
+        <span>${data.name}</span>
       `;
+      card.style.cursor = "pointer";
+      card.onclick = () => showPublicProfile(docSnap.id);
+      container.appendChild(card);
     }
   });
+}
+
+async function showPublicProfile(userId) {
+  const container = document.getElementById("public-profile-content");
+  const profileSnap = await getDoc(doc(db, "profiles", userId));
+  if (!profileSnap.exists()) {
+    container.innerHTML = "<p>Perfil no encontrado.</p>";
+    return;
+  }
+  const data = profileSnap.data();
+
+  let nameHTML = data.name;
+  if (data.photoLink) {
+    nameHTML = `<a href="${data.photoLink}" target="_blank" rel="noopener noreferrer">${data.name}</a>`;
+  }
+
+  let interestsHTML = "";
+  if (data.interests) {
+    interestsHTML = "<h3>Gustos</h3><ul>";
+    for (const [category, info] of Object.entries(data.interests)) {
+      interestsHTML += `
+        <li>
+          <strong>${category}:</strong> ${info.name}
+          ${info.reason ? `<br><em>Por qué: ${info.reason}</em>` : ""}
+          ${info.image ? `<br><img src="${info.image}" alt="${info.name}" style="max-width:150px; border-radius:8px; margin-top:0.3em;">` : ""}
+        </li>`;
+    }
+    interestsHTML += "</ul>";
+  }
+
+  container.innerHTML = `
+    <div class="profile-header">
+      <img src="${data.image || "default-profile.png"}" alt="Foto de perfil" />
+      <h2>${nameHTML}</h2>
+    </div>
+    <p>${data.description || ""}</p>
+    ${interestsHTML}
+  `;
+
+  switchView("publicProfile");
 }
