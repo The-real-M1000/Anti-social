@@ -210,7 +210,7 @@ async function showInterestForm() {
     customField.style.display = select.value === "otra" ? "block" : "none";
   });
 
-  // Evento para buscar imagen automáticamente cuando se escribe un nombre
+  // Evento para buscar imagen automáticamente cuando se pierde el foco del campo nombre
   nameInput.addEventListener("blur", async () => {
     const title = nameInput.value.trim();
     const selectedCategory = select.value === "otra"
@@ -223,13 +223,14 @@ async function showInterestForm() {
         const result = await searchMedia(selectedCategory, title);
         document.getElementById("api-search-result").innerHTML = '';
         
-        if (result.found) {
+        if (result && result.found) {
           imageInput.value = result.imageUrl;
           previewImg.src = result.imageUrl;
           imagePreview.style.display = "block";
         }
       } catch (error) {
         console.error("Error al buscar imagen:", error);
+        document.getElementById("api-search-result").innerHTML = '<p class="error-msg">Error al buscar imagen. Intenta más tarde.</p>';
       }
     }
   });
@@ -250,7 +251,7 @@ async function showInterestForm() {
       document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
       const result = await searchMedia(selectedCategory, title);
       
-      if (result.found) {
+      if (result && result.found) {
         document.getElementById("api-search-result").innerHTML = '<p class="success-msg">¡Imagen encontrada!</p>';
         imageInput.value = result.imageUrl;
         previewImg.src = result.imageUrl;
@@ -293,87 +294,120 @@ async function showInterestForm() {
 
     let interests = existingData.interests || {};
 
+    // Verificamos si ya existe la categoría
     let catArray = interests[selectedCategory];
     if (!catArray) {
       catArray = [];
     } else if (!Array.isArray(catArray)) {
       catArray = [catArray];
     }
+    
     catArray.push({ name, reason, image });
     interests[selectedCategory] = catArray;
 
-    await setDoc(doc(db, "profiles", currentUser.uid), {
-      interests
-    }, { merge: true });
+    try {
+      await setDoc(doc(db, "profiles", currentUser.uid), {
+        interests
+      }, { merge: true });
 
-    alert("🎉 Gusto añadido correctamente");
-    loadMyProfile();
+      alert("🎉 Gusto añadido correctamente");
+      loadMyProfile();
+    } catch (error) {
+      console.error("Error al guardar el interés:", error);
+      alert("Error al guardar. Intenta de nuevo más tarde.");
+    }
   });
 }
 
 async function loadUserList() {
   const container = document.getElementById("user-list-container");
-  container.innerHTML = "";
-  const querySnapshot = await getDocs(collection(db, "profiles"));
-  querySnapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    const uid = docSnap.id;
+  container.innerHTML = "<p>Cargando usuarios...</p>";
+  
+  try {
+    const querySnapshot = await getDocs(collection(db, "profiles"));
+    
+    if (querySnapshot.empty) {
+      container.innerHTML = "<p>No hay usuarios registrados.</p>";
+      return;
+    }
+    
+    container.innerHTML = "";
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const uid = docSnap.id;
 
-    const card = document.createElement("div");
-    card.className = "user-card";
-    card.innerHTML = `
-      <img src="${data.image || "default-profile.png"}" />
-      <span>${data.name}</span>
-    `;
-    card.onclick = () => showPublicProfile(uid);
-    container.appendChild(card);
-  });
+      if (data.onboardingComplete) { // Solo mostrar perfiles completos
+        const card = document.createElement("div");
+        card.className = "user-card";
+        card.innerHTML = `
+          <img src="${data.image || "default-profile.png"}" />
+          <span>${data.name || "Usuario sin nombre"}</span>
+        `;
+        card.onclick = () => showPublicProfile(uid);
+        container.appendChild(card);
+      }
+    });
+    
+    if (container.children.length === 0) {
+      container.innerHTML = "<p>No hay usuarios con perfiles completos.</p>";
+    }
+  } catch (error) {
+    console.error("Error al cargar la lista de usuarios:", error);
+    container.innerHTML = "<p>Error al cargar usuarios. Intenta más tarde.</p>";
+  }
 }
 
 async function showPublicProfile(userId) {
   const container = document.getElementById("public-profile-content");
-  const profileSnap = await getDoc(doc(db, "profiles", userId));
-  if (!profileSnap.exists()) {
-    container.innerHTML = "<p>Perfil no encontrado.</p>";
-    return;
-  }
-
-  const data = profileSnap.data();
-  let nameHTML = data.name;
-  if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
-
-  let interestsHTML = "";
-  if (data.interests) {
-    interestsHTML = `<h3>Gustos</h3><div class="interests-grid">`;
-    for (const [cat, items] of Object.entries(data.interests)) {
-      let arr = items;
-      if (arr && !Array.isArray(arr)) arr = [arr];
-      
-      for (const item of arr) {
-        interestsHTML += `
-          <div class="interest-card">
-            <div class="interest-image">
-              <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
-            </div>
-            <div class="interest-info">
-              <h4>${item.name}</h4>
-              <span class="interest-category">${cat}</span>
-              ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
-            </div>
-          </div>`;
-      }
+  container.innerHTML = "<p>Cargando perfil...</p>";
+  
+  try {
+    const profileSnap = await getDoc(doc(db, "profiles", userId));
+    if (!profileSnap.exists()) {
+      container.innerHTML = "<p>Perfil no encontrado.</p>";
+      return;
     }
-    interestsHTML += "</div>";
+
+    const data = profileSnap.data();
+    let nameHTML = data.name || "Usuario sin nombre";
+    if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
+
+    let interestsHTML = "";
+    if (data.interests) {
+      interestsHTML = `<h3>Gustos</h3><div class="interests-grid">`;
+      for (const [cat, items] of Object.entries(data.interests)) {
+        let arr = items;
+        if (arr && !Array.isArray(arr)) arr = [arr];
+        
+        for (const item of arr) {
+          interestsHTML += `
+            <div class="interest-card">
+              <div class="interest-image">
+                <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name || 'Sin nombre'}">
+              </div>
+              <div class="interest-info">
+                <h4>${item.name || 'Sin nombre'}</h4>
+                <span class="interest-category">${cat}</span>
+                ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
+              </div>
+            </div>`;
+        }
+      }
+      interestsHTML += "</div>";
+    }
+
+    container.innerHTML = `
+      <div class="profile-header">
+        <img src="${data.image || "default-profile.png"}" />
+        <h2>${nameHTML}</h2>
+      </div>
+      <p>${data.description || ""}</p>
+      ${interestsHTML}
+    `;
+
+    switchView("publicProfile");
+  } catch (error) {
+    console.error("Error al cargar el perfil público:", error);
+    container.innerHTML = "<p>Error al cargar el perfil. Intenta más tarde.</p>";
   }
-
-  container.innerHTML = `
-    <div class="profile-header">
-      <img src="${data.image || "default-profile.png"}" />
-      <h2>${nameHTML}</h2>
-    </div>
-    <p>${data.description || ""}</p>
-    ${interestsHTML}
-  `;
-
-  switchView("publicProfile");
 }
