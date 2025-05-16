@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
+// Config Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -96,28 +97,23 @@ async function loadMyProfile() {
       for (const cat of categories) {
         let items = data.interests[cat];
         if (items && !Array.isArray(items)) items = [items];
+        html += `<li><strong>${cat}:</strong><ul>`;
         for (const item of items || []) {
-          html += renderInterestItem(cat, item);
+          html += `<li>${item.name}</li>`;
         }
+        html += "</ul></li>";
       }
     } else {
       let items = data.interests[filterCat];
       if (items && !Array.isArray(items)) items = [items];
+      html += `<li><strong>${filterCat}:</strong><ul>`;
       for (const item of items || []) {
-        html += renderInterestItem(filterCat, item);
+        html += `<li>${item.name}</li>`;
       }
+      html += "</ul></li>";
     }
     html += "</ul>";
     return html;
-  }
-
-  function renderInterestItem(cat, item) {
-    return `
-      <li>
-        <strong>${cat}:</strong> ${item.name}
-        ${item.reason ? `<br><em>Por qué: ${item.reason}</em>` : ""}
-        ${item.image ? `<br><img src="${item.image}" style="max-width:150px; border-radius:8px;">` : ""}
-      </li>`;
   }
 
   container.innerHTML = `
@@ -250,14 +246,11 @@ async function showPublicProfile(userId) {
     for (const [cat, items] of Object.entries(data.interests)) {
       let arr = items;
       if (arr && !Array.isArray(arr)) arr = [arr];
+      interestsHTML += `<li><strong>${cat}:</strong><ul>`;
       for (const item of arr) {
-        interestsHTML += `
-          <li>
-            <strong>${cat}:</strong> ${item.name}
-            ${item.reason ? `<br><em>Por qué: ${item.reason}</em>` : ""}
-            ${item.image ? `<br><img src="${item.image}" style="max-width:150px; border-radius:8px;">` : ""}
-          </li>`;
+        interestsHTML += `<li>${item.name}</li>`;
       }
+      interestsHTML += "</ul></li>";
     }
     interestsHTML += "</ul>";
   }
