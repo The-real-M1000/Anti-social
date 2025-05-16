@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 import { searchMedia } from "./api-handler.js";
+import { askForDetails } from "./onboarding.js"; // Importar la función de onboarding
 
 // Config Firebase
 const firebaseConfig = {
@@ -47,7 +48,8 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     const profileSnap = await getDoc(doc(db, "profiles", user.uid));
     if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) {
-      document.getElementById("app-container").innerHTML = `<p class="placeholder-text">Completa tu perfil para continuar.</p>`;
+      // Iniciar el proceso de onboarding aquí
+      startOnboarding(user.uid);
       return;
     }
     switchView("myProfile");
@@ -55,6 +57,14 @@ onAuthStateChanged(auth, async (user) => {
     switchView("explore");
   }
 });
+
+// Nueva función para iniciar el proceso de onboarding
+function startOnboarding(uid) {
+  // Categorías predeterminadas que queremos preguntar al usuario
+  const categories = ["Películas", "Series", "Juegos", "Libros"];
+  // Llamar a la función askForDetails de onboarding.js
+  askForDetails(uid, categories);
+}
 
 function switchView(view) {
   Object.values(views).forEach(v => v && (v.style.display = "none"));
@@ -84,8 +94,8 @@ async function loadMyProfile() {
   }
 
   const data = profileSnap.data();
-  let nameHTML = data.name;
-  if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
+  let nameHTML = data.name || currentUser.displayName || "Usuario"; // Usar el nombre de Google si está disponible
+  if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${nameHTML}</a>`;
 
   const categories = data.interests ? Object.keys(data.interests) : [];
   const allBtn = `<button class="filter-btn active" data-cat="all">Todo</button>`;
@@ -137,7 +147,7 @@ async function loadMyProfile() {
 
   container.innerHTML = `
     <div class="profile-header">
-      <img src="${data.image || "default-profile.png"}" />
+      <img src="${data.image || currentUser.photoURL || "default-profile.png"}" />
       <h2>${nameHTML}</h2>
     </div>
     <p>${data.description || ""}</p>
@@ -350,7 +360,10 @@ async function showInterestForm() {
 
     try {
       await setDoc(doc(db, "profiles", currentUser.uid), {
-        interests
+        interests,
+        name: currentUser.displayName || "Usuario",  // Usar el nombre de Google si está disponible
+        image: currentUser.photoURL || "",          // Usar la foto de Google si está disponible
+        onboardingComplete: true                    // Asegurarse de que el onboarding esté marcado como completo
       }, { merge: true });
 
       alert("🎉 Gusto añadido correctamente");
