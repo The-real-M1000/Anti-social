@@ -2,11 +2,23 @@ import { searchMedia } from "./api-handler.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
-// Obtener referencia a Firestore
-const db = getFirestore();
-const auth = getAuth();
+// Instead of initializing Firebase here, we'll use the instances passed from script.js
+let db = null;
+let auth = null;
+
+// Function to initialize the module with Firebase instances
+function initializeModule(firestoreInstance, authInstance) {
+  db = firestoreInstance;
+  auth = authInstance;
+}
 
 async function askForDetails(uid, categories, index = 0, interests = {}) {
+  // Check if Firebase instances were properly initialized
+  if (!db || !auth) {
+    console.error("Firebase not initialized in onboarding module");
+    return;
+  }
+  
   const current = categories[index];
   const container = document.getElementById("app-container");
   
@@ -200,4 +212,4 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
   });
 }
 
-export { askForDetails };
+export { askForDetails, initializeModule };
