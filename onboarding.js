@@ -13,6 +13,76 @@ function initializeModule(firestoreInstance, authInstance) {
   auth = authInstance;
 }
 
+// Nueva función para solicitar la biografía antes de comenzar con las categorías
+async function askForBio(uid) {
+  // Check if Firebase instances were properly initialized
+  if (!db || !auth) {
+    console.error("Firebase not initialized in onboarding module");
+    return;
+  }
+  
+  const container = document.getElementById("app-container");
+  
+  // Obtener datos del usuario actual de Google Auth
+  const user = auth.currentUser;
+  
+  // Intentar obtener perfil existente
+  const profileSnap = await getDoc(doc(db, "profiles", uid));
+  const userData = profileSnap.exists() ? profileSnap.data() : {};
+  
+  // Crear o actualizar el documento básico del perfil
+  if (user) {
+    await setDoc(doc(db, "profiles", uid), {
+      name: user.displayName || "Usuario",
+      image: user.photoURL || "",
+      email: user.email || "",
+      onboardingComplete: false
+    }, { merge: true });
+  }
+  
+  container.innerHTML = `
+    <form id="bio-form" class="onboarding">
+      <h2>✨ Tu Biografía</h2>
+      <p>Cuéntanos un poco sobre ti. Esta información aparecerá en tu perfil.</p>
+      
+      <label for="user-bio">Biografía:</label>
+      <textarea id="user-bio" rows="5" placeholder="Escribe algo interesante sobre ti..." maxlength="500"></textarea>
+      <p class="char-counter"><span id="char-count">0</span>/500 caracteres</p>
+      
+      <button type="submit">Siguiente</button>
+    </form>
+  `;
+
+  const bioTextarea = document.getElementById("user-bio");
+  const charCount = document.getElementById("char-count");
+  
+  // Actualizar contador de caracteres
+  bioTextarea.addEventListener("input", () => {
+    const count = bioTextarea.value.length;
+    charCount.textContent = count;
+  });
+
+  document.getElementById("bio-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const bio = bioTextarea.value.trim();
+
+    // Guardamos la biografía
+    try {
+      await setDoc(doc(db, "profiles", uid), {
+        bio: bio
+      }, { merge: true });
+      
+      // Continuamos con las categorías de intereses
+      const categories = ["Películas", "Series", "Juegos", "Libros"];
+      askForDetails(uid, categories);
+      
+    } catch (error) {
+      console.error("Error al guardar la biografía:", error);
+      alert("Error al guardar. Intenta de nuevo más tarde.");
+    }
+  });
+}
+
 async function askForDetails(uid, categories, index = 0, interests = {}) {
   // Check if Firebase instances were properly initialized
   if (!db || !auth) {
@@ -225,4 +295,4 @@ async function askForDetails(uid, categories, index = 0, interests = {}) {
   });
 }
 
-export { askForDetails, initializeModule };
+export { askForDetails, askForBio, initializeModule };
