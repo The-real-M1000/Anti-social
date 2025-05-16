@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 
-// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDFs98G3-1gcWVgjfoXi_47EGd8ZYsMZrI",
   authDomain: "anti-social-18930.firebaseapp.com",
@@ -13,7 +12,6 @@ const firebaseConfig = {
   measurementId: "G-BRWL7419ZQ"
 };
 
-// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -38,7 +36,6 @@ document.getElementById("login-button").addEventListener("click", () => {
 document.getElementById("logout-button").addEventListener("click", () => {
   signOut(auth);
 });
-
 document.getElementById("close-public-profile").addEventListener("click", () => {
   switchView(currentViewBeforePublic || "explore");
 });
@@ -66,15 +63,20 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function switchView(view) {
-  Object.values(views).forEach(v => (v.style.display = "none"));
+  Object.values(views).forEach(v => {
+    if (v) v.style.display = "none";
+  });
+
   Object.values(navButtons).forEach(b => b.classList.remove("active"));
+
   if (view !== "publicProfile") {
-    views[view].style.display = "block";
+    if (views[view]) views[view].style.display = "block";
     if (navButtons[view]) navButtons[view].classList.add("active");
     currentViewBeforePublic = view;
   } else {
-    views.publicProfile.style.display = "block";
+    if (views.publicProfile) views.publicProfile.style.display = "block";
   }
+
   if (view === "myProfile") loadMyProfile();
   if (view === "explore") loadUserList();
 }
@@ -179,3 +181,4 @@ async function showPublicProfile(userId) {
 
   switchView("publicProfile");
 }
+
