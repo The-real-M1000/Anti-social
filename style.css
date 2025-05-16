@@ -389,3 +389,11 @@ main#app-container {
     font-size: 1.1em;
     border: 1px dashed #ced4da; /* Dashed border for distinction */
 }
+.onboarding-box {
+    background-color: #f8f9fa;
+    padding: 1.5em;
+    border-radius: 8px;
+    border: 1px solid #dfe3e8;
+    margin-bottom: 1em;
+  }
+  
