@@ -448,28 +448,54 @@ async function showPublicProfile(userId) {
     let nameHTML = data.name || "Usuario sin nombre";
     if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
 
-    let interestsHTML = "";
-    if (data.interests) {
-      interestsHTML = `<h3>Gustos</h3><div class="interests-grid">`;
-      for (const [cat, items] of Object.entries(data.interests)) {
-        let arr = items;
-        if (arr && !Array.isArray(arr)) arr = [arr];
+    // Obtener categorías para los filtros
+    const categories = data.interests ? Object.keys(data.interests) : [];
+    const allBtn = `<button class="filter-btn active" data-cat="all">Todo</button>`;
+    const catBtns = categories.map(cat => `<button class="filter-btn" data-cat="${cat}">${cat}</button>`).join("");
+
+    // Función para renderizar intereses según el filtro seleccionado
+    function renderInterests(filterCat) {
+      if (!data.interests) return "<p>Este usuario no tiene gustos registrados.</p>";
+      let html = "<div class='interests-grid'>";
+      if (filterCat === "all") {
+        for (const cat of categories) {
+          let items = data.interests[cat];
+          if (items && !Array.isArray(items)) items = [items];
+          
+          for (const item of items || []) {
+            html += `
+              <div class="interest-card">
+                <div class="interest-image">
+                  <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
+                </div>
+                <div class="interest-info">
+                  <h4>${item.name}</h4>
+                  <span class="interest-category">${cat}</span>
+                  ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
+                </div>
+              </div>`;
+          }
+        }
+      } else {
+        let items = data.interests[filterCat];
+        if (items && !Array.isArray(items)) items = [items];
         
-        for (const item of arr) {
-          interestsHTML += `
+        for (const item of items || []) {
+          html += `
             <div class="interest-card">
               <div class="interest-image">
-                <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name || 'Sin nombre'}">
+                <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
               </div>
               <div class="interest-info">
-                <h4>${item.name || 'Sin nombre'}</h4>
-                <span class="interest-category">${cat}</span>
+                <h4>${item.name}</h4>
+                <span class="interest-category">${filterCat}</span>
                 ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
               </div>
             </div>`;
-        }
+        }  
       }
-      interestsHTML += "</div>";
+      html += "</div>";
+      return html;
     }
 
     container.innerHTML = `
@@ -478,8 +504,21 @@ async function showPublicProfile(userId) {
         <h2>${nameHTML}</h2>
       </div>
       <p>${data.description || ""}</p>
-      ${interestsHTML}
+      <div id="public-filters-container">${allBtn}${catBtns}</div>
+      <div id="public-interests-list">${renderInterests("all")}</div>
     `;
+
+    // Agregar los event listeners para los filtros
+    const filtersContainer = document.getElementById("public-filters-container");
+    const interestsList = document.getElementById("public-interests-list");
+    filtersContainer.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        filtersContainer.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const cat = btn.getAttribute("data-cat");
+        interestsList.innerHTML = renderInterests(cat);
+      });
+    });
 
     switchView("publicProfile");
   } catch (error) {
