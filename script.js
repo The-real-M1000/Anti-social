@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebas
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
 import { searchMedia } from "./api-handler.js";
+import { askForDetails } from "./onboarding.js";  // 🔥 Importamos tu onboarding personalizado
 
 // Config Firebase
 const firebaseConfig = {
@@ -39,6 +40,7 @@ document.getElementById("close-public-profile").addEventListener("click", () => 
   switchView(currentViewBeforePublic || "explore");
 });
 
+// Modificamos onAuthStateChanged para disparar onboarding si no está completo
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   document.getElementById("login-button").style.display = user ? "none" : "inline-block";
@@ -47,7 +49,9 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     const profileSnap = await getDoc(doc(db, "profiles", user.uid));
     if (!profileSnap.exists() || !profileSnap.data().onboardingComplete) {
-      document.getElementById("app-container").innerHTML = `<p class="placeholder-text">Completa tu perfil para continuar.</p>`;
+      // Iniciar el proceso de onboarding con categorías predeterminadas
+      const defaultCategories = ["Películas", "Series", "Juegos", "Libros"];
+      askForDetails(user.uid, defaultCategories);
       return;
     }
     switchView("myProfile");
@@ -75,6 +79,7 @@ function switchView(view) {
 navButtons.myProfile.addEventListener("click", () => switchView("myProfile"));
 navButtons.explore.addEventListener("click", () => switchView("explore"));
 
+// Carga el perfil del usuario autenticado
 async function loadMyProfile() {
   const container = document.getElementById("profile-display-content");
   const profileSnap = await getDoc(doc(db, "profiles", currentUser.uid));
@@ -94,29 +99,10 @@ async function loadMyProfile() {
   function renderInterests(filterCat) {
     if (!data.interests) return "<p>No tienes gustos registrados.</p>";
     let html = "<div class='interests-grid'>";
-    if (filterCat === "all") {
-      for (const cat of categories) {
-        let items = data.interests[cat];
-        if (items && !Array.isArray(items)) items = [items];
-        
-        for (const item of items || []) {
-          html += `
-            <div class="interest-card">
-              <div class="interest-image">
-                <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
-              </div>
-              <div class="interest-info">
-                <h4>${item.name}</h4>
-                <span class="interest-category">${cat}</span>
-                ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
-              </div>
-            </div>`;
-        }
-      }
-    } else {
-      let items = data.interests[filterCat];
+    const cats = filterCat === "all" ? categories : [filterCat];
+    cats.forEach(cat => {
+      let items = data.interests[cat];
       if (items && !Array.isArray(items)) items = [items];
-      
       for (const item of items || []) {
         html += `
           <div class="interest-card">
@@ -125,12 +111,12 @@ async function loadMyProfile() {
             </div>
             <div class="interest-info">
               <h4>${item.name}</h4>
-              <span class="interest-category">${filterCat}</span>
+              <span class="interest-category">${cat}</span>
               ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
             </div>
           </div>`;
-      }  
-    }
+      }
+    });
     html += "</div>";
     return html;
   }
@@ -152,14 +138,14 @@ async function loadMyProfile() {
     btn.addEventListener("click", () => {
       filtersContainer.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      const cat = btn.getAttribute("data-cat");
-      interestsList.innerHTML = renderInterests(cat);
+      interestsList.innerHTML = renderInterests(btn.getAttribute("data-cat"));
     });
   });
 
   document.getElementById("add-interest-btn").addEventListener("click", showInterestForm);
 }
 
+// Formulario para añadir un nuevo interés
 async function showInterestForm() {
   const container = document.getElementById("profile-display-content");
   if (document.getElementById("new-interest-form")) return;
@@ -187,24 +173,20 @@ async function showInterestForm() {
       <div id="api-search-result"></div>
       <label>¿Por qué te gusta?</label>
       <textarea id="new-reason"></textarea><br>
-      
       <div>
         <label>Imagen (URL):</label>
         <div class="image-search-container">
           <input type="url" id="new-img" placeholder="URL de imagen o se buscará automáticamente">
           <button type="button" id="search-image-btn">Buscar imagen</button>
         </div>
-        
         <div id="image-results-container" style="display:none; margin-top: 1em;">
           <h4>Selecciona una imagen:</h4>
           <div id="image-results-grid" class="image-results-grid"></div>
         </div>
-        
         <div id="image-preview" class="image-preview" style="display:none;">
           <img id="preview-img" src="" alt="Vista previa">
         </div>
       </div>
-      
       <button type="submit">Guardar</button>
     </form>
   `;
@@ -217,15 +199,12 @@ async function showInterestForm() {
   const imageInput = document.getElementById("new-img");
   const imageResultsContainer = document.getElementById("image-results-container");
   const imageResultsGrid = document.getElementById("image-results-grid");
-  
   select.addEventListener("change", () => {
     customField.style.display = select.value === "otra" ? "block" : "none";
   });
 
-  // Función para mostrar las opciones de imagen
   function displayImageResults(results) {
     imageResultsGrid.innerHTML = '';
-    
     results.forEach((item, index) => {
       if (item.imageUrl) {
         const imageCard = document.createElement('div');
@@ -235,21 +214,16 @@ async function showInterestForm() {
           <div class="image-result-info">
             <p>${item.title || 'Sin título'}</p>
             ${item.year ? `<span>${item.year}</span>` : ''}
-          </div>
-        `;
-        
+          </div>`;
         imageCard.addEventListener('click', () => {
-          // Seleccionar esta imagen
           imageInput.value = item.imageUrl;
           previewImg.src = item.imageUrl;
           imagePreview.style.display = "block";
           imageResultsContainer.style.display = "none";
         });
-        
         imageResultsGrid.appendChild(imageCard);
       }
     });
-    
     if (imageResultsGrid.children.length > 0) {
       imageResultsContainer.style.display = "block";
     } else {
@@ -257,19 +231,16 @@ async function showInterestForm() {
     }
   }
 
-  // Evento para buscar imagen automáticamente cuando se pierde el foco del campo nombre
   nameInput.addEventListener("blur", async () => {
     const title = nameInput.value.trim();
     const selectedCategory = select.value === "otra"
       ? document.getElementById("custom-category").value.trim()
       : select.value;
-    
     if (title && selectedCategory && !imageInput.value) {
       try {
         document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
         const result = await searchMedia(selectedCategory, title);
         document.getElementById("api-search-result").innerHTML = '';
-        
         if (result && result.found && result.results && result.results.length > 0) {
           displayImageResults(result.results);
         }
@@ -280,23 +251,16 @@ async function showInterestForm() {
     }
   });
 
-  // Evento para el botón de búsqueda de imagen
   document.getElementById("search-image-btn").addEventListener("click", async () => {
     const title = nameInput.value.trim();
     const selectedCategory = select.value === "otra"
       ? document.getElementById("custom-category").value.trim()
       : select.value;
-    
-    if (!title) {
-      alert("Por favor ingresa un nombre para buscar");
-      return;
-    }
-    
+    if (!title) { alert("Por favor ingresa un nombre para buscar"); return; }
     try {
       document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
       const result = await searchMedia(selectedCategory, title);
       document.getElementById("api-search-result").innerHTML = '';
-      
       if (result && result.found && result.results && result.results.length > 0) {
         displayImageResults(result.results);
       } else {
@@ -308,7 +272,6 @@ async function showInterestForm() {
     }
   });
 
-  // Ver imagen en tiempo real cuando cambia la URL manualmente
   imageInput.addEventListener("input", () => {
     const url = imageInput.value.trim();
     if (url) {
@@ -321,65 +284,36 @@ async function showInterestForm() {
 
   document.getElementById("new-interest-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-
     const selectedCategory = select.value === "otra"
       ? document.getElementById("custom-category").value.trim()
       : select.value;
-
     const name = nameInput.value.trim();
     const reason = document.getElementById("new-reason").value.trim();
     const image = imageInput.value.trim();
-
-    if (!selectedCategory || !name) {
-      alert("La categoría y el nombre son obligatorios");
-      return;
-    }
-
+    if (!selectedCategory || !name) { alert("La categoría y el nombre son obligatorios"); return; }
     let interests = existingData.interests || {};
-
-    // Verificamos si ya existe la categoría
-    let catArray = interests[selectedCategory];
-    if (!catArray) {
-      catArray = [];
-    } else if (!Array.isArray(catArray)) {
-      catArray = [catArray];
-    }
-    
+    let catArray = interests[selectedCategory] ?
+      Array.isArray(interests[selectedCategory]) ? interests[selectedCategory] : [interests[selectedCategory]]
+      : [];
     catArray.push({ name, reason, image });
     interests[selectedCategory] = catArray;
-
-    try {
-      await setDoc(doc(db, "profiles", currentUser.uid), {
-        interests
-      }, { merge: true });
-
-      alert("🎉 Gusto añadido correctamente");
-      loadMyProfile();
-    } catch (error) {
-      console.error("Error al guardar el interés:", error);
-      alert("Error al guardar. Intenta de nuevo más tarde.");
-    }
+    try { await setDoc(doc(db, "profiles", currentUser.uid), { interests }, { merge: true });
+      alert("🎉 Gusto añadido correctamente"); loadMyProfile();
+    } catch (error) { console.error("Error al guardar el interés:", error); alert("Error al guardar. Intenta de nuevo más tarde."); }
   });
 }
 
+// Carga la lista de usuarios con perfil completo
 async function loadUserList() {
   const container = document.getElementById("user-list-container");
   container.innerHTML = "<p>Cargando usuarios...</p>";
-  
   try {
     const querySnapshot = await getDocs(collection(db, "profiles"));
-    
-    if (querySnapshot.empty) {
-      container.innerHTML = "<p>No hay usuarios registrados.</p>";
-      return;
-    }
-    
     container.innerHTML = "";
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
       const uid = docSnap.id;
-
-      if (data.onboardingComplete) { // Solo mostrar perfiles completos
+      if (data.onboardingComplete) {
         const card = document.createElement("div");
         card.className = "user-card";
         card.innerHTML = `
@@ -390,55 +324,44 @@ async function loadUserList() {
         container.appendChild(card);
       }
     });
-    
-    if (container.children.length === 0) {
-      container.innerHTML = "<p>No hay usuarios con perfiles completos.</p>";
-    }
+    if (!container.children.length) container.innerHTML = "<p>No hay usuarios con perfiles completos.</p>";
   } catch (error) {
     console.error("Error al cargar la lista de usuarios:", error);
     container.innerHTML = "<p>Error al cargar usuarios. Intenta más tarde.</p>";
   }
 }
 
+// Muestra el perfil público de otro usuario
 async function showPublicProfile(userId) {
   const container = document.getElementById("public-profile-content");
   container.innerHTML = "<p>Cargando perfil...</p>";
-  
   try {
     const profileSnap = await getDoc(doc(db, "profiles", userId));
-    if (!profileSnap.exists()) {
-      container.innerHTML = "<p>Perfil no encontrado.</p>";
-      return;
-    }
-
+    if (!profileSnap.exists()) { container.innerHTML = "<p>Perfil no encontrado.</p>"; return; }
     const data = profileSnap.data();
     let nameHTML = data.name || "Usuario sin nombre";
     if (data.photoLink) nameHTML = `<a href="${data.photoLink}" target="_blank">${data.name}</a>`;
-
     let interestsHTML = "";
     if (data.interests) {
       interestsHTML = `<h3>Gustos</h3><div class="interests-grid">`;
-      for (const [cat, items] of Object.entries(data.interests)) {
-        let arr = items;
-        if (arr && !Array.isArray(arr)) arr = [arr];
-        
-        for (const item of arr) {
+      Object.entries(data.interests).forEach(([cat, items]) => {
+        const arr = Array.isArray(items) ? items : [items];
+        arr.forEach(item => {
           interestsHTML += `
             <div class="interest-card">
               <div class="interest-image">
-                <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name || 'Sin nombre'}">
+                <img src="${item.image || 'placeholder-interest.png'}" alt="${item.name}">
               </div>
               <div class="interest-info">
-                <h4>${item.name || 'Sin nombre'}</h4>
+                <h4>${item.name}</h4>
                 <span class="interest-category">${cat}</span>
                 ${item.reason ? `<p class="interest-reason">${item.reason}</p>` : ''}
               </div>
             </div>`;
-        }
-      }
+        });
+      });
       interestsHTML += "</div>";
     }
-
     container.innerHTML = `
       <div class="profile-header">
         <img src="${data.image || "default-profile.png"}" />
@@ -447,7 +370,6 @@ async function showPublicProfile(userId) {
       <p>${data.description || ""}</p>
       ${interestsHTML}
     `;
-
     switchView("publicProfile");
   } catch (error) {
     console.error("Error al cargar el perfil público:", error);
