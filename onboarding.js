@@ -1,4 +1,8 @@
 import { searchMedia } from "./api-handler.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+
+// Obtener referencia a Firestore
+const db = getFirestore();
 
 function askForDetails(uid, categories, index = 0, interests = {}) {
   const current = categories[index];
@@ -145,68 +149,26 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
 
     interests[current] = { name, reason, image };
 
-    try {
-      await setDoc(doc(db, "profiles", uid), {
-        interests,
-        onboardingComplete: true
-      }, { merge: true });
+    // Verificar si hay más categorías
+    if (index < categories.length - 1) {
+      // Ir a la siguiente categoría
+      askForDetails(uid, categories, index + 1, interests);
+    } else {
+      // Completar el proceso
+      try {
+        await setDoc(doc(db, "profiles", uid), {
+          interests,
+          onboardingComplete: true
+        }, { merge: true });
 
-      alert("✅ ¡Perfil configurado!");
-      location.reload();
-    } catch (error) {
-      console.error("Error al guardar el perfil:", error);
-      alert("Error al guardar. Intenta de nuevo más tarde.");
+        alert("✅ ¡Perfil configurado!");
+        location.reload();
+      } catch (error) {
+        console.error("Error al guardar el perfil:", error);
+        alert("Error al guardar. Intenta de nuevo más tarde.");
+      }
     }
   });
 }
-
-// Estilos CSS adicionales para las tarjetas de resultado de imagen
-const additionalCSS = `
-.image-results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.image-result-card {
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: border-color 0.2s, transform 0.2s;
-}
-
-.image-result-card:hover {
-  border-color: #4A90E2;
-  transform: translateY(-2px);
-}
-
-.image-result-card img {
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-  display: block;
-}
-
-.image-result-info {
-  padding: 0.5rem;
-  background-color: #f8f9fa;
-  font-size: 0.85rem;
-}
-
-.image-result-info p {
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 500;
-}
-
-.image-result-info span {
-  font-size: 0.75rem;
-  color: #6c757d;
-}
-`;
 
 export { askForDetails };
