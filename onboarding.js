@@ -40,10 +40,28 @@ function showBasicInfoForm(uid) {
       <input type="text" id="user-name" required />
       <label>Foto de perfil (URL):</label>
       <input type="url" id="user-image" placeholder="https://..." />
+      <div id="profile-image-preview" class="image-preview" style="display:none; margin-top:1em;">
+        <img id="profile-preview-img" src="" alt="Vista previa">
+      </div>
       <br><br>
       <button type="submit">Siguiente</button>
     </form>
   `;
+
+  // Añadir vista previa para la foto de perfil
+  const userImageInput = document.getElementById("user-image");
+  const profileImagePreview = document.getElementById("profile-image-preview");
+  const profilePreviewImg = document.getElementById("profile-preview-img");
+
+  userImageInput.addEventListener("input", () => {
+    const url = userImageInput.value.trim();
+    if (url) {
+      profilePreviewImg.src = url;
+      profileImagePreview.style.display = "block";
+    } else {
+      profileImagePreview.style.display = "none";
+    }
+  });
 
   document.getElementById("basic-info-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -102,31 +120,21 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
   container.innerHTML = `
     <form id="interest-form" class="onboarding">
       <h2>💡 ${current}</h2>
-      <div class="form-field">
-        <label>¿Cuál es tu favorito?</label>
-        <input type="text" id="fav-name" required />
-        <button type="button" id="search-results-btn" class="search-btn">🔍 Buscar</button>
+      <label>¿Cuál es tu favorito?</label>
+      <input type="text" id="fav-name" required />
+      <div id="api-search-result"></div>
+      <label>¿Por qué te gusta?</label>
+      <textarea id="fav-reason" rows="3"></textarea>
+      <label>Imagen:</label>
+      <div class="image-search-container">
+        <input type="url" id="fav-image" placeholder="URL de imagen o se buscará automáticamente">
+        <button type="button" id="search-image-btn">Buscar imagen</button>
       </div>
-      
-      <div id="search-results-container" class="search-results"></div>
-      
-      <div id="details-container" style="display:none;">
-        <div class="form-field">
-          <label>¿Por qué te gusta?</label>
-          <textarea id="fav-reason" rows="3"></textarea>
-        </div>
-        
-        <div class="form-field">
-          <label>Imagen:</label>
-          <input type="url" id="fav-image" placeholder="URL de imagen">
-        </div>
-        
-        <div id="image-preview" class="image-preview" style="display:none;">
-          <img id="preview-img" src="" alt="Vista previa">
-        </div>
-        
-        <button type="submit">Finalizar</button>
+      <div id="image-preview" class="image-preview" style="display:none;">
+        <img id="preview-img" src="" alt="Vista previa">
       </div>
+      <br><br>
+      <button type="submit">Finalizar</button>
     </form>
   `;
 
@@ -134,11 +142,57 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
   const imageInput = document.getElementById("fav-image");
   const imagePreview = document.getElementById("image-preview");
   const previewImg = document.getElementById("preview-img");
-  const searchBtn = document.getElementById("search-results-btn");
-  const resultsContainer = document.getElementById("search-results-container");
-  const detailsContainer = document.getElementById("details-container");
 
-  // Configurar la vista previa de la imagen
+  // Buscar imagen automáticamente cuando se pierde el foco del campo nombre
+  nameInput.addEventListener("blur", async () => {
+    const title = nameInput.value.trim();
+    
+    if (title && !imageInput.value) {
+      try {
+        document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
+        const result = await searchMedia(current, title);
+        document.getElementById("api-search-result").innerHTML = '';
+        
+        if (result && result.found) {
+          imageInput.value = result.imageUrl;
+          previewImg.src = result.imageUrl;
+          imagePreview.style.display = "block";
+        }
+      } catch (error) {
+        console.error("Error al buscar imagen:", error);
+        document.getElementById("api-search-result").innerHTML = '<p class="error-msg">Error al buscar imagen. Intenta más tarde.</p>';
+      }
+    }
+  });
+
+  // Evento para el botón de búsqueda de imagen
+  document.getElementById("search-image-btn").addEventListener("click", async () => {
+    const title = nameInput.value.trim();
+    
+    if (!title) {
+      alert("Por favor ingresa un nombre para buscar");
+      return;
+    }
+    
+    try {
+      document.getElementById("api-search-result").innerHTML = '<p class="searching-msg">Buscando imagen...</p>';
+      const result = await searchMedia(current, title);
+      
+      if (result && result.found) {
+        document.getElementById("api-search-result").innerHTML = '<p class="success-msg">¡Imagen encontrada!</p>';
+        imageInput.value = result.imageUrl;
+        previewImg.src = result.imageUrl;
+        imagePreview.style.display = "block";
+      } else {
+        document.getElementById("api-search-result").innerHTML = '<p class="error-msg">No se encontró imagen. Intenta con otro título o añade la URL manualmente.</p>';
+      }
+    } catch (error) {
+      console.error("Error al buscar imagen:", error);
+      document.getElementById("api-search-result").innerHTML = '<p class="error-msg">Error al buscar imagen. Intenta más tarde.</p>';
+    }
+  });
+
+  // Ver imagen en tiempo real cuando cambia la URL
   imageInput.addEventListener("input", () => {
     const url = imageInput.value.trim();
     if (url) {
@@ -149,105 +203,30 @@ function askForDetails(uid, categories, index = 0, interests = {}) {
     }
   });
 
-  // Buscar resultados al hacer clic en el botón
-  searchBtn.addEventListener("click", async () => {
-    const title = nameInput.value.trim();
-    if (!title) {
-      alert("Por favor ingresa un nombre para buscar");
-      return;
-    }
-    
-    try {
-      resultsContainer.innerHTML = '<p class="searching-msg">Buscando resultados...</p>';
-      const searchResult = await searchMedia(current, title);
-      
-      if (searchResult.found) {
-        // Mostrar los resultados para que el usuario elija
-        resultsContainer.innerHTML = `
-          <div class="results-header">
-            <h4>Resultados encontrados:</h4>
-            <p>Selecciona una opción para continuar</p>
-          </div>
-          <div class="results-grid">
-            ${searchResult.results.map(item => `
-              <div class="result-card" data-image="${item.imageUrl || ''}" data-title="${item.title || ''}">
-                <div class="result-image" style="background-image: url('${item.imageUrl || 'placeholder-interest.png'}')"></div>
-                <div class="result-info">
-                  <h4>${item.title || 'Sin título'}</h4>
-                  ${item.year ? `<span class="result-year">${item.year}</span>` : ''}
-                  <p class="result-overview">${item.overview ? item.overview.substring(0, 100) + (item.overview.length > 100 ? '...' : '') : 'Sin descripción'}</p>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-        
-        // Agregar evento de clic a cada tarjeta de resultado
-        document.querySelectorAll('.result-card').forEach(card => {
-          card.addEventListener('click', () => {
-            const selectedTitle = card.getAttribute('data-title');
-            const selectedImage = card.getAttribute('data-image');
-            
-            // Actualizar los campos con el resultado seleccionado
-            nameInput.value = selectedTitle;
-            imageInput.value = selectedImage;
-            
-            if (selectedImage) {
-              previewImg.src = selectedImage;
-              imagePreview.style.display = "block";
-            }
-            
-            // Mostrar el formulario de detalles y ocultar los resultados
-            detailsContainer.style.display = "block";
-            resultsContainer.innerHTML = `
-              <div class="selected-result">
-                <p>Has seleccionado: <strong>${selectedTitle}</strong></p>
-                <button type="button" id="change-selection-btn">Cambiar selección</button>
-              </div>
-            `;
-            
-            // Agregar evento para volver a buscar
-            document.getElementById("change-selection-btn").addEventListener('click', () => {
-              resultsContainer.innerHTML = "";
-              searchBtn.click();
-            });
-          });
-        });
-        
-      } else {
-        resultsContainer.innerHTML = `
-          <div class="no-results">
-            <p>No se encontraron resultados para "${title}".</p>
-            <p>Puedes intentar con otro término o agregar los detalles manualmente.</p>
-            <button type="button" id="add-manually-btn">Agregar manualmente</button>
-          </div>
-        `;
-        
-        document.getElementById("add-manually-btn").addEventListener('click', () => {
-          detailsContainer.style.display = "block";
-          resultsContainer.innerHTML = "";
-        });
-      }
-    } catch (error) {
-      console.error("Error al buscar:", error);
-      resultsContainer.innerHTML = '<p class="error-msg">Error al buscar. Intenta más tarde.</p>';
-    }
-  });
-
   document.getElementById("interest-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("fav-name").value.trim();
     const reason = document.getElementById("fav-reason").value.trim();
     const image = document.getElementById("fav-image").value.trim();
 
+    if (!name) {
+      alert("Por favor ingresa un nombre");
+      return;
+    }
+
     interests[current] = { name, reason, image };
 
-    await setDoc(doc(db, "profiles", uid), {
-      interests,
-      onboardingComplete: true
-    }, { merge: true });
+    try {
+      await setDoc(doc(db, "profiles", uid), {
+        interests,
+        onboardingComplete: true
+      }, { merge: true });
 
-    alert("✅ ¡Perfil configurado!");
-    location.reload();
+      alert("✅ ¡Perfil configurado!");
+      location.reload();
+    } catch (error) {
+      console.error("Error al guardar el perfil:", error);
+      alert("Error al guardar. Intenta de nuevo más tarde.");
+    }
   });
 }
