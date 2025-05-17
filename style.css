@@ -14,7 +14,7 @@
   --text-secondary: #AAAAAA;       /* Texto gris claro */
   --border-color: #2C2C2C;         /* Bordes gris oscuro */
   --hover-color: #222222;          /* Hover oscuro sutil */
-  --success-color: #5CFF5C;        /* Verde neón para éxito */
+  --success-color: #AFAFAF;         /* Verde neón para éxito */
   --error-color: #FF5C5C;          /* Rojo suave para error */
 }
 
@@ -416,7 +416,7 @@ main#app-container {
 .onboarding button, 
 #new-interest-form button {
   background-color: var(--primary-color);
-  color: white;
+  color: #2C2C2C; 
   border: none;
   padding: 12px;
   margin-top: 20px;
@@ -436,7 +436,7 @@ main#app-container {
 /* Botón para añadir interés, estilo Twitter */
 #add-interest-btn {
   background-color: var(--primary-color);
-  color: white;
+  color: #2C2C2C;
   border: none;
   padding: 12px;
   border-radius: 30px;
@@ -450,7 +450,7 @@ main#app-container {
 }
 
 #add-interest-btn:hover {
-  background-color: #2C2C2C;
+  background-color: #222222;
 }
 
 /* Mensajes de búsqueda */
@@ -644,7 +644,7 @@ main#app-container {
 .image-search-container button {
   white-space: nowrap;
   background-color: var(--primary-color);
-  color: white;
+  color: #2C2C2C; 
   border: none;
   padding: 10px 16px;
   border-radius: 20px;
@@ -669,7 +669,7 @@ main#app-container {
 }.share-profile-button {
   display: flex;
   align-items: center;
-  background-color: #5CFF5C;  
+  background-color: #AFAFAF; 
   color: white;
   border: none;
   border-radius: 20px;
@@ -681,7 +681,7 @@ main#app-container {
 }
 
 .share-profile-button:hover {
-  background-color: #5CFF5C;  
+  background-color: #AFAFAF; 
 }
 
 .share-profile-button i {
